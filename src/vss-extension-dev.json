@@ -1,0 +1,69 @@
+{
+    "manifestVersion": 1,
+    "id": "mightora-playwright-for-power-platform",
+    "name": "DEV 1.0.1 - Playwright for Power Platform",
+    "version": "1.0.1",
+    "publisher": "mightoraio",
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],
+    "description": "Power Platform Documentation Extension, allows users of this extension to quickly and easily document out their solutions in to easy to read documentation.",
+    "categories": [
+        "Azure Pipelines"
+    ],
+    "icons": {
+        "default": "images/mightora_io_icon_260x260.png"
+    },
+    "content": {
+        "details": {
+            "path": "readme.md"
+        },
+        "pricing": {
+            "path": "pricing.md"
+        }
+    },
+    "links": {
+        "home": {
+            "uri": "https://mightora.io"
+        },
+        "getstarted": {
+            "uri": "https://mightora.io"
+        },
+        "learn": {
+            "uri": "https://mightora.io"
+        },
+        "support": {
+            "uri": "https://mightora.io"
+        },
+        "repository": {
+            "uri": "https://mightora.io"
+        },
+        "issues": {
+            "uri": "https://mightora.io"
+        }
+    },
+    "repository": {
+        "type": "git",
+        "uri": "https://github.com/mightora"
+    },
+    "files": [
+        {
+            "path": "tasks/commitToRepo",
+            "packagePath": "commitToRepo"
+        }
+    ],
+    "contributions": [
+        {
+            "id": "mightora-commitToRepo-task",
+            "type": "ms.vss-distributed-task.task",
+            "targets": [
+                "ms.vss-distributed-task.tasks"
+            ],
+            "properties": {
+                "name": "commitToRepo"
+            }
+        }
+    ]
+}
