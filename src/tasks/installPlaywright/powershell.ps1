@@ -103,6 +103,53 @@ function Install-NodeJS {
     }
 }
 
+# Clone Playwright repository
+function Clone-PlaywrightRepository {
+    param(
+        [string]$RepositoryUrl = "https://github.com/itweedie/playwrightOnPowerPlatform.git",
+        [string]$TargetFolder = "playwright"
+    )
+    
+    Write-Host "Cloning Playwright repository..."
+    
+    # Get current working directory
+    $currentDir = Get-Location
+    $playwrightPath = Join-Path $currentDir $TargetFolder
+    
+    try {
+        # Check if git is available
+        try {
+            $gitVersion = & git --version 2>$null
+            Write-Host "Git is available: $gitVersion"
+        } catch {
+            Write-Error "Git is not installed or not available in PATH. Please install Git first."
+            throw "Git not found"
+        }
+        
+        # Remove existing playwright folder if it exists
+        if (Test-Path $playwrightPath) {
+            Write-Host "Removing existing playwright folder..."
+            Remove-Item -Path $playwrightPath -Recurse -Force
+        }
+        
+        # Clone the repository
+        Write-Host "Cloning repository from: $RepositoryUrl"
+        Write-Host "Target folder: $playwrightPath"
+        
+        & git clone $RepositoryUrl $playwrightPath
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Successfully cloned Playwright repository to: $playwrightPath"
+        } else {
+            throw "Git clone failed with exit code: $LASTEXITCODE"
+        }
+        
+    } catch {
+        Write-Error "Failed to clone Playwright repository: $($_.Exception.Message)"
+        throw
+    }
+}
+
 # Display the developer message
 $developerMessage = Fetch-DeveloperMessage
 Write-Host "Developer Message: $developerMessage"
@@ -111,6 +158,18 @@ Write-Host "Developer Message: $developerMessage"
 Write-Host "==========================================================="
 Write-Host "Installing Node.js..."
 Install-NodeJS
+Write-Host "==========================================================="
+
+# Clone Playwright repository
+Write-Host "==========================================================="
+Write-Host "Cloning Playwright repository..."
+Clone-PlaywrightRepository
+Write-Host "==========================================================="
+
+# Clone the Playwright repository
+Write-Host "==========================================================="
+Write-Host "Cloning Playwright repository..."
+Clone-PlaywrightRepository
 Write-Host "==========================================================="
 
 
