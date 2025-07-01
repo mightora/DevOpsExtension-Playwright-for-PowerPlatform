@@ -1,17 +1,17 @@
 {
     "$schema": "https://raw.githubusercontent.com/Microsoft/azure-pipelines-task-lib/master/tasks.schema.json",
-    "id": "579190ac-ccd4-4451-a188-a6150001cf1a",
-    "name": "mightoria-installPlaywright",
-    "friendlyName": "Install Playwright for PowerPlatform",
-    "instanceNameFormat": "Install Playwright for PowerPlatform",
-    "description": "Effortlessly commit your pipeline's working directory changes to your Git repository. This task handles everything from staging all modifications to pushing them using secure authentication via the System.AccessToken variable. It simplifies the process of managing Git commits during your build or release pipeline, ensuring your repository is always up-to-date with the latest changes.",
+    "id": "579190ac-ccd4-4451-a288-a6150001cf1a",
+    "name": "mightoria-playwrightForPowerPlatform",
+    "friendlyName": "Playwright for Power Platform",
+    "instanceNameFormat": "Playwright for Power Platform",
+    "description": "Execute end-to-end tests on Power Platform applications using Playwright. This DevOps extension automatically sets up Playwright, installs dependencies, runs your test suite against Power Platform apps, and generates comprehensive test reports with screenshots, traces, and detailed failure analysis for CI/CD pipelines.",
     "helpMarkDown": "See [mightora.io](https://mightora.io)",
     "category": "Build",
     "author": "mightoraio",
     "version": {
-        "Major": 2,
-        "Minor": 2,
-        "Patch": 20
+        "Major": 1,
+        "Minor": 0,
+        "Patch": 1
     },
     "groups": [
         {

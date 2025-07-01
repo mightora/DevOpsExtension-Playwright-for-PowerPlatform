@@ -29,4 +29,4 @@ jobs:
         run: |
           cd src
           tfx extension publish --publisher mightoraio --manifest-globs vss-extension-dev.json --token ${{ secrets.VS_MARKETPLACE_TOKEN }} --rev-version
-#         tfx extension publish --publisher mightoraio --manifest-globs vss-extension.json --token ${{ secrets.VS_MARKETPLACE_TOKEN }} --rev-version
+          tfx extension publish --publisher mightoraio --manifest-globs vss-extension.json --token ${{ secrets.VS_MARKETPLACE_TOKEN }} --rev-version

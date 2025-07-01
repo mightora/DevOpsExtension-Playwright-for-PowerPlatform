@@ -1,8 +1,8 @@
 {
     "manifestVersion": 1,
-    "id": "dev-mightora-playwright-for-power-platform",
+    "id": "mightora-playwright-for-power-platform",
     "name": "Playwright for Power Platform",
-    "version": "1.0.1",
+    "version": "1.0.8",
     "publisher": "mightoraio",
     "galleryFlags": [
         "Public",
@@ -13,7 +13,7 @@
             "id": "Microsoft.VisualStudio.Services"
         }
     ],
-  "description": "Power Platform Documentation Extension, allows users of this extension to quickly and easily document out their solutions in to easy to read documentation.",
+    "description": "DevOps extension that enables automated end-to-end testing of Power Platform applications using Playwright. Seamlessly integrates with Azure DevOps pipelines to execute UI tests, validate Power Apps functionality, and generate detailed test reports with failure analysis, screenshots, and traces for comprehensive quality assurance.",
     "categories": [
         "Azure Pipelines"
     ],
@@ -22,7 +22,7 @@
     },
     "content": {
         "details": {
-            "path": "details.md"
+            "path": "readme.md"
         },
         "pricing": {
             "path": "pricing.md"
@@ -42,19 +42,19 @@
             "uri": "https://mightora.io"
         },
         "repository": {
-            "uri": "https://github.com/mightora/Power-Platform-DevOps-Extension"
+            "uri": "https://github.com/mightora/DevOpsExtension-Playwright-for-PowerPlatform"
         },
         "issues": {
-            "uri": "https://github.com/mightora/Power-Platform-DevOps-Extension/issues"
+            "uri": "https://github.com/mightora/DevOpsExtension-Playwright-for-PowerPlatform/issues"
         }
     },
     "repository": {
         "type": "git",
-        "uri": "https://github.com/mightora/Power-Platform-DevOps-Extension"
+        "uri": "https://github.com/mightora/DevOpsExtension-Playwright-for-PowerPlatform"
     },
     "badges": [
         {
-            "href": "https://marketplace.visualstudio.com/items?itemName=mightoraio.mightora-power-platform-devOps-extension",
+            "href": "https://marketplace.visualstudio.com/items?itemName=mightoraio.mightora-playwright-for-power-platform",
             "uri": "https://img.shields.io/badge/Marketplace-View%20Extension-blue?logo=visual-studio",
             "description": "VS Marketplace"
         },
@@ -64,13 +64,13 @@
             "description": "DeepScan grade"
         },
         {
-            "href": "https://isitmaintained.com/project/mightora/Power-Platform-DevOps-Extension",
-            "uri": "http://isitmaintained.com/badge/resolution/mightora/Power-Platform-DevOps-Extension.svg",
+            "href": "https://isitmaintained.com/project/mightora/DevOpsExtension-Playwright-for-PowerPlatform",
+            "uri": "http://isitmaintained.com/badge/resolution/mightora/DevOpsExtension-Playwright-for-PowerPlatform.svg",
             "description": "Issue Open issues"
         },
         {
-            "href": "https://isitmaintained.com/project/mightora/Power-Platform-DevOps-Extension",
-            "uri": "http://isitmaintained.com/badge/open/mightora/Power-Platform-DevOps-Extension.svg",
+            "href": "https://isitmaintained.com/project/mightora/DevOpsExtension-Playwright-for-PowerPlatform",
+            "uri": "http://isitmaintained.com/badge/open/mightora/DevOpsExtension-Playwright-for-PowerPlatform.svg",
             "description": "Open issues"
         },
         {
@@ -81,19 +81,20 @@
     ],
     "files": [
         {
-            "path": "tasks/commitToRepo",
-            "packagePath": "commitToRepo"
+            "path": "tasks/playwrightForPowerPlatform",
+            "packagePath": "playwrightForPowerPlatform"
         }
     ],
     "contributions": [
         {
-            "id": "mightora-commitToRepo-task",
+            "id": "mightoria-playwrightForPowerPlatform",
             "type": "ms.vss-distributed-task.task",
             "targets": [
                 "ms.vss-distributed-task.tasks"
             ],
             "properties": {
-                "name": "commitToRepo"
+                "name": "playwrightForPowerPlatform",
+                "friendlyName": "Playwright for Power Platform"
             }
         }
     ]

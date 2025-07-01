@@ -9,7 +9,7 @@
             "id": "Microsoft.VisualStudio.Services"
         }
     ],
-    "description": "Power Platform Documentation Extension, allows users of this extension to quickly and easily document out their solutions in to easy to read documentation.",
+    "description": "DevOps extension that enables automated end-to-end testing of Power Platform applications using Playwright. Seamlessly integrates with Azure DevOps pipelines to execute UI tests, validate Power Apps functionality, and generate detailed test reports with failure analysis, screenshots, and traces for comprehensive quality assurance.",
     "categories": [
         "Azure Pipelines"
     ],
@@ -50,20 +50,20 @@
     },
     "files": [
         {
-            "path": "tasks/installPlaywright",
-            "packagePath": "installPlaywright"
+            "path": "tasks/playwrightForPowerPlatform",
+            "packagePath": "playwrightForPowerPlatform"
         }
     ],
     "contributions": [
         {
-            "id": "mightoria-installPlaywright",
+            "id": "mightoria-playwrightForPowerPlatform",
             "type": "ms.vss-distributed-task.task",
             "targets": [
                 "ms.vss-distributed-task.tasks"
             ],
             "properties": {
-                "name": "installPlaywright",
-                "friendlyName": "Install Playwright for PowerPlatform"
+                "name": "playwrightForPowerPlatform",
+                "friendlyName": "Playwright for Power Platform"
              }
         }
     ]

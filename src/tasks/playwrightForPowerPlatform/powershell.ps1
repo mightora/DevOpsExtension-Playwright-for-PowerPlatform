@@ -1,17 +1,14 @@
 <#
     ===========================================================
-    Task: Playwright for Power Platform
+    Task: Mightora Commit To Git Repository
     
-    Originally Created By: Ian Tweedie [https://iantweedie.biz] (Date: 2025-06-17)
-    Date: 2025-06-17
+    Originally Created By: Ian Tweedie [https://iantweedie.biz] (Date: 2024-10-08)
+    Date: 2024-10-08
 
     Contributors:
-    - Developer A (Contributions: Enhanced test failure reporting and diagnostics)
-    - Developer B (Contributions: Added comprehensive trace and screenshot analysis)
+    - Developer A (Contributions: Improved Git configuration handling)
+    - Developer B (Contributions: Added support for custom commit messages)
     
-    Description: DevOps task that sets up Playwright testing environment,
-    executes end-to-end tests against Power Platform applications, and
-    generates detailed reports with failure analysis for CI/CD pipelines.
     ===========================================================
 #>
 
@@ -760,10 +757,10 @@ Write-Host "==========================================================="
 
 # Output the script information at runtime
 Write-Host "==========================================================="
-Write-Host "Task: Playwright for Power Platform"
-Write-Host "Originally Created By: Ian Tweedie [https://iantweedie.biz] (Date: 2025-06-17)"
+Write-Host "Task: Mightora Commit To Git Repository"
+Write-Host "Originally Created By: Ian Tweedie [https://iantweedie.biz] (Date: 2024-10-08)"
 Write-Host "Contributors:"
-Write-Host " - Enhanced test failure reporting and diagnostics"
-Write-Host " - Comprehensive trace and screenshot analysis"
+#Write-Host " - Developer A (Contributions: Improved Git configuration handling)"
+#Write-Host " - Developer B (Contributions: Added support for custom commit messages)"
 Write-Host "==========================================================="
 

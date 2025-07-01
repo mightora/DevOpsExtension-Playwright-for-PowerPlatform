@@ -1,200 +1,103 @@
-[![Visual Studio Marketplace](https://img.shields.io/badge/Marketplace-View%20Extension-blue?logo=visual-studio)](https://marketplace.visualstudio.com/items?itemName=mightoraio.mightora-power-platform-devOps-extension) [![DeepScan grade](https://deepscan.io/api/teams/25106/projects/28110/branches/903222/badge/grade.svg)](https://deepscan.io/dashboard#view=project&tid=25106&pid=28110&bid=903222) [![vsmarketplace](https://vsmarketplacebadges.dev/version/mightoraio.mightora-power-platform-devOps-extension.svg)](https://marketplace.visualstudio.com/items?itemName=mightoraio.mightora-power-platform-devOps-extension)  
-[![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/mightora/Power-Platform-DevOps-Extension.svg)](http://isitmaintained.com/project/mightora/Power-Platform-DevOps-Extension)  
-[![Percentage of issues still open](http://isitmaintained.com/badge/open/mightora/Power-Platform-DevOps-Extension.svg)](http://isitmaintained.com/project/mightora/Power-Platform-DevOps-Extension) 
-![Mightora.io](https://img.shields.io/badge/Mightora-Visit-blue?logo=https://raw.githubusercontent.com/mightora/mightora.io/main/static/favicon-32x32.png&link=https://mightora.io)
+[![Visual Studio Marketplace](https://img.shields.io/badge/Marketplace-View%20Extension-blue?logo=visual-studio)](https://marketplace.visualstudio.com/items?itemName=mightoraio.mightora-power-platform-devOps-extension)
 
-# Mightora Power Platform Extension
-The Mightora Power Platform DevOps Extension is a comprehensive set of tools designed to generate Power Platform Solution Documentation from within an Azure DevOps Pipeline. We have also included some other useful tools within the solution such as the **XML Node Updater** and **XML Node Attribute Updater** allowing advanced users to edit a solution within a release pipeline. Alongside this we have included tools which allow you to connect to **Dataverse for Teams** from Azure DevOps allowing ALM and a handy extension allowing for easy commit to repo from a Pipeline. 
+# Playwright for Power Platform DevOps Extension
+
+Automate end-to-end testing of your Power Platform applications with Playwright in Azure DevOps pipelines. This extension provides a comprehensive testing solution that sets up Playwright, executes tests against Power Apps, and generates detailed reports with failure analysis for CI/CD workflows.
 
 **Created by:**
 
-[![Mightora Logo](https://raw.githubusercontent.com/TechTweedie/techtweedie.github.io/main/static/logo-01_150x150.png)](https://techtweedie.github.io)
-
+[![Mightora Logo](https://raw.githubusercontent.com/TechTweedie/techtweedie.github.io/main/static/logo-01_150x150.png)](https://techtweedie.github.io) [![Playwright Logo](https://playwright.dev/img/playwright-logo.svg)](https://playwright.dev)
 
 # Setup 
 - Install the DevOps extension in your DevOps Organization using the **Get it free** button.
-- Navigate to your pipeline.
-- Add the tasks you want to use to your pipeline.
-- Some tasks require PAC to be installed.
+- Navigate to your Azure DevOps pipeline.
+- Add the Playwright for Power Platform task to your pipeline.
+- Configure your test parameters and Power Platform credentials.
+- Run your pipeline to execute automated UI tests.
 
 # Support
 Please visit [mightora.io](https://mightora.io)
 
-# Key features 
+# Key Features
 
-## Table Documentation Generator
+## Playwright for Power Platform Testing
 
 ### Overview
-This task automates the documentation of Dataverse entities. It reads files from an unpacked solution and generates Markdown documentation for each table and its attributes.
+This task enables automated end-to-end testing of Power Platform applications using Playwright. It handles the complete testing lifecycle from environment setup to detailed failure analysis, making it perfect for CI/CD pipelines that need to validate Power Apps functionality.
 
 ### Key Features
-- **Automated Documentation**: Generates Markdown documentation from Dataverse entity files.
-- **Entity and Attribute Details**: Documents each entity's attributes, including names, types, display names, and required levels.
-- **Flexible Output**: Choose to generate documentation in a single file or separate files for each entity.
-- **Version Control Ready**: The generated Markdown files can be integrated into your version control system.
+- **Automated Environment Setup**: Automatically installs Node.js, Playwright, and all required dependencies
+- **Power Platform Integration**: Native support for Power Apps authentication and testing scenarios
+- **Multi-Browser Testing**: Execute tests across Chromium, Firefox, WebKit, or all browsers simultaneously  
+- **Comprehensive Reporting**: Generates HTML reports, JSON results, JUnit XML, and detailed trace files
+- **Advanced Failure Analysis**: Captures screenshots, videos, DOM snapshots, and network activity on test failures
+- **Environment Variable Management**: Seamlessly passes Azure DevOps variables to test scripts
+- **Trace Debugging**: Optional trace capture for step-by-step test execution analysis
+- **Flexible Test Organization**: Supports custom test locations and output directories
+
+### How It Works
+1. **Environment Preparation**: The task clones a Playwright testing framework specifically designed for Power Platform
+2. **Dependency Installation**: Automatically installs Node.js, npm packages, and Playwright browsers
+3. **Test Execution**: Copies your tests to the framework and executes them with configured parameters
+4. **Result Analysis**: Analyzes test results and provides detailed failure diagnostics
+5. **Report Generation**: Creates comprehensive reports and copies them to your specified output location
+
+### Configuration Options
+- **Test Location**: Specify where your Playwright test files are stored
+- **Browser Selection**: Choose specific browsers or run tests across all supported browsers
+- **Trace Mode**: Enable detailed execution tracing for debugging failed tests
+- **Output Location**: Define where test results and reports should be saved
+- **Power Platform Settings**: Configure app URLs, names, and Office 365 credentials
 
 ### How to Use
-1. Add the task to your Azure DevOps pipeline.
-2. Configure the inputs:
-    - `locationOfUnpackedSolution`: Path to the folder with the unpacked Dataverse solution.
-    - `wikiLocation`: Path where the generated Markdown files will be stored.
-    - `useSingleFile`: Choose `true` for a single file or `false` for separate files.
-3. Run the pipeline to generate the documentation.
+1. Add the task to your Azure DevOps pipeline
+2. Configure the required inputs:
+   - `testLocation`: Path to your Playwright test files
+   - `browser`: Browser(s) to run tests on (chromium, firefox, webkit, or all)
+   - `outputLocation`: Directory for test results and reports
+   - `appUrl`: URL of your Power Platform application
+   - `o365Username` & `o365Password`: Authentication credentials for Power Apps
+3. Optional configuration:
+   - `trace`: Enable tracing for debugging (off, on, retain-on-failure, on-first-retry)
+   - `appName`: Name of your Power Platform application
+4. Run the pipeline to execute your tests
 
 ### Example Pipeline Usage
 
 ```yaml
-- task: documentSolutionTables@1
+- task: mightoria-playwrightForPowerPlatform@1
   inputs:
-    locationOfUnpackedSolution: "$(Build.ArtifactStagingDirectory)/UnpackedSolution"
-    wikiLocation: "$(Build.ArtifactStagingDirectory)/WikiDocs"
-    useSingleFile: true
+    testLocation: "$(System.DefaultWorkingDirectory)/PlaywrightTests"
+    browser: "chromium"
+    trace: "retain-on-failure"
+    outputLocation: "$(System.DefaultWorkingDirectory)/TestResults"
+    appUrl: "https://apps.powerapps.com/play/your-app-id"
+    appName: "MyPowerApp"
+    o365Username: "$(TestUserEmail)"
+    o365Password: "$(TestUserPassword)"
 ```
 
-## Table Relationship Documentation Generator
+### Test Failure Analysis
+When tests fail, the extension provides:
+- **Detailed Error Messages**: Specific failure reasons extracted from test results
+- **Visual Evidence**: Screenshots captured at the moment of failure
+- **Video Recordings**: Complete test execution videos (when enabled)
+- **Trace Files**: Step-by-step execution traces for debugging
+- **Network Analysis**: HTTP requests and responses during test execution
+- **Environment Validation**: Verification of configuration and connectivity
 
-### Overview
-This task documents relationships between Dataverse tables by parsing relationship data from XML files and generating Markdown documentation.
+### Supported Test Scenarios
+- **Login and Authentication**: Automated Office 365 sign-in workflows
+- **Navigation Testing**: Verify app navigation and page transitions
+- **Form Interactions**: Test data entry, validation, and submission
+- **Canvas App Testing**: Interact with Power Apps canvas controls
+- **Model-Driven App Testing**: Test Dynamics 365 and model-driven apps
+- **Integration Testing**: Validate connections to external systems
+- **Performance Testing**: Monitor app loading times and responsiveness
 
-### Key Features
-- **Automated Relationship Documentation**: Generates Markdown documentation for table relationships.
-- **Relationship Details**: Documents relationship types and cascades.
-- **Mermaid Diagrams**: Generates diagrams using Mermaid syntax to visualize relationships.
-- **Flexible Output**: Choose to generate a single file or separate files for each table.
-- **Version Control Ready**: The documentation can be integrated into your version control system.
-
-### How to Use
-1. Add the task to your Azure DevOps pipeline.
-2. Configure the inputs:
-    - `locationOfUnpackedSolution`: Path to the folder with the unpacked Dataverse solution.
-    - `wikiLocation`: Path where the generated Markdown files will be stored.
-    - `useSingleFile`: Choose `true` for a single file or `false` for separate files.
-3. Run the pipeline to generate the documentation.
-
-### Example Pipeline Usage
-
-```yaml
-- task: documentTableRelationships@1
-  inputs:
-    locationOfUnpackedSolution: "$(Build.ArtifactStagingDirectory)/UnpackedSolution"
-    wikiLocation: "$(Build.ArtifactStagingDirectory)/WikiDocs"
-    useSingleFile: true
-```
-
-## Solution XML Node Attribute Updater
-
-### Overview
-This task updates specific attributes in XML solution files using PowerShell, allowing dynamic adjustments without manual editing.
-
-### Key Features
-- **Automated XML Updates**: Updates attributes within XML files during pipeline execution.
-- **XPath Node Selection**: Uses XPath expressions to select specific XML nodes.
-- **Flexible Configuration**: Input the file path, node XPath, attribute name, and new value.
-- **Improves Automation**: Ideal for automating configuration changes or version updates.
-
-### How to Use
-1. Add the task to your Azure DevOps pipeline.
-2. Configure the inputs:
-    - `XmlFilePath`: Path to the XML file to modify.
-    - `NodeXPath`: XPath expression to locate the XML node.
-    - `attributeName`: Name of the attribute to modify.
-    - `NewValue`: New value for the attribute.
-3. Run the pipeline to update the XML file.
-
-### Example Pipeline Usage
-
-```yaml
-- task: solutionXMLNodeAttributeUpdater@1
-  inputs:
-    xmlFilePath: "$(Build.SourcesDirectory)/Solutions/MySolution/Entity.xml"
-    nodeXPath: "/Entity/Attributes/Attribute[@Name='DisplayName']"
-    attributeName: "DisplayName"
-    newValue: "NewDisplayName"
-```
-
-## Solution XML Node Updater
-
-### Overview
-This task updates specific XML nodes within Power Platform solution files, allowing dynamic adjustments during pipeline runs.
-
-### Key Features
-- **Automated Node Updates**: Updates values of specific XML nodes during pipeline execution.
-- **Precise Node Selection**: Uses XPath expressions to locate and modify nodes.
-- **Flexible and Dynamic**: Allows dynamic updates to XML nodes.
-- **Streamlined Automation**: Ideal for build and release pipelines.
-
-### How to Use
-1. Add the task to your Azure DevOps pipeline.
-2. Configure the inputs:
-    - `XmlFilePath`: Path to the XML file with the node to update.
-    - `NodeXPath`: XPath expression to locate the XML node.
-    - `NewValue`: New value for the node.
-3. Run the pipeline to update the XML node.
-
-### Example Pipeline Usage
-
-```yaml
-- task: solutionXMLNodeUpdater@1
-  inputs:
-    xmlFilePath: "$(Build.SourcesDirectory)/Solutions/MySolution/Entity.xml"
-    nodeXPath: "/Entity/Attributes/Attribute[@Name='Description']"
-    newValue: "Updated description"
-```
-
-
-## Dataverse 4 Teams Export
-
-### Overview
-This task exports and unpacks solutions from a Dataverse for Teams environment, automating the process and allowing easy management and versioning of Power Platform assets.
-
-### Key Features
-- **Solution Export**: Automates the export of a solution from Dataverse for Teams.
-- **Canvas App Unpacking**: Unpacks `.msapp` files for version control and customization.
-- **Solution Settings Template**: Generates a settings template file.
-- **PAC CLI Integration**: Uses the Power Platform CLI for authentication and solution operations.
-
-### How to Use
-1. Add the task to your Azure DevOps pipeline.
-2. Configure the inputs:
-    - `solutionName`: Name of the solution to export.
-    - `exportDirectory`: Directory to save the exported solution.
-    - `unpackDirectory`: Directory to unpack the solution.
-    - `environment`: URL of the Dataverse for Teams environment.
-3. Ensure PAC CLI is installed in your pipeline environment.
-4. Run the pipeline to export and unpack the solution.
-
-### Example Pipeline Usage
-
-```yaml
-- task: dataverse4TeamsExport@1
-  inputs:
-    solutionName: "MySolution"
-    exportDirectory: "$(Build.ArtifactStagingDirectory)/ExportedSolutions"
-    unpackDirectory: "$(Build.ArtifactStagingDirectory)/UnpackedSolutions"
-    environment: "https://your-environment-url"
-```
-
-## Commit To Git Repository
-
-### Overview
-This task automates committing changes made during a pipeline run to your Git repository, ensuring everything is pushed automatically.
-
-### Key Features
-- **Automated Git Commits**: Stages and commits all modifications to the Git repository.
-- **Secure Authentication**: Uses the pipeline's `System.AccessToken` for authentication.
-- **Customizable Commit Message**: Specify a commit message via the task's input parameters.
-- **Flexible Configuration**: Set up Git configurations like user email and name.
-
-### How to Use
-1. Add the task to your Azure DevOps pipeline.
-2. Specify the commit message using the `commitMsg` input.
-3. Ensure your pipeline has the `System.AccessToken` variable enabled.
-4. Run the pipeline to commit and push changes to the repository.
-
-### Example Pipeline Usage
-
-```yaml
-- task: commitToRepo@1
-  inputs:
-    commitMsg: "Automated commit from pipeline"
-```
+### Best Practices
+- Store sensitive credentials in Azure DevOps secret variables
+- Use trace mode "retain-on-failure" for optimal debugging without performance impact
+- Organize tests in logical groups using descriptive file names
+- Set up test data cleanup to maintain test environment consistency
+- Use the HTML report for detailed test analysis and sharing with stakeholders
