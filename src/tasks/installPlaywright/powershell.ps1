@@ -408,7 +408,10 @@ function Run-PlaywrightTests {
         }
         
         # Add reporter for better output in CI/CD
-        $testCommand += " --reporter=list,json"
+        $testCommand += " --reporter=list,html,json"
+        
+        # Add additional flags for better debugging
+        $testCommand += " --output=test-results" 
         
         Write-Host "Executing command: $testCommand"
         Write-Host "Starting Playwright test execution..."
@@ -423,17 +426,104 @@ function Run-PlaywrightTests {
         } else {
             Write-Warning "Some Playwright tests failed or encountered issues (Exit Code: $testExitCode)"
             
-            # Check if test results exist
+            # Provide detailed failure analysis
+            Write-Host "============================================" -ForegroundColor Red
+            Write-Host "DETAILED TEST FAILURE ANALYSIS" -ForegroundColor Red
+            Write-Host "============================================" -ForegroundColor Red
+            
+            # Check if test results exist and analyze them
             $resultsPath = Join-Path $playwrightPath "test-results"
             if (Test-Path $resultsPath) {
                 Write-Host "Test results available at: $resultsPath"
+                
+                # Look for JSON results files for detailed error information
+                $jsonResults = Get-ChildItem -Path $resultsPath -Recurse -Filter "*.json" -ErrorAction SilentlyContinue
+                if ($jsonResults) {
+                    Write-Host "Found JSON result files:" -ForegroundColor Yellow
+                    foreach ($jsonFile in $jsonResults | Select-Object -First 5) {
+                        Write-Host "  - $($jsonFile.FullName)" -ForegroundColor Yellow
+                        try {
+                            $content = Get-Content $jsonFile.FullName -Raw | ConvertFrom-Json
+                            if ($content.errors) {
+                                Write-Host "    Errors found in $($jsonFile.Name):" -ForegroundColor Red
+                                $content.errors | ForEach-Object { Write-Host "      - $_" -ForegroundColor Red }
+                            }
+                        } catch {
+                            Write-Host "    Could not parse JSON file: $($jsonFile.Name)"
+                        }
+                    }
+                }
+                
+                # Look for trace files
+                $traceFiles = Get-ChildItem -Path $resultsPath -Recurse -Filter "trace.zip" -ErrorAction SilentlyContinue
+                if ($traceFiles) {
+                    Write-Host "Trace files found (for detailed debugging):" -ForegroundColor Cyan
+                    $traceFiles | ForEach-Object { Write-Host "  - $($_.FullName)" -ForegroundColor Cyan }
+                    Write-Host "Use 'npx playwright show-trace <trace-file>' to view detailed trace" -ForegroundColor Cyan
+                }
+                
+                # Look for screenshots
+                $screenshots = Get-ChildItem -Path $resultsPath -Recurse -Filter "*.png" -ErrorAction SilentlyContinue
+                if ($screenshots) {
+                    Write-Host "Screenshot evidence found:" -ForegroundColor Magenta
+                    $screenshots | Select-Object -First 10 | ForEach-Object { Write-Host "  - $($_.FullName)" -ForegroundColor Magenta }
+                }
+                
+                # Look for videos
+                $videos = Get-ChildItem -Path $resultsPath -Recurse -Filter "*.webm" -ErrorAction SilentlyContinue
+                if ($videos) {
+                    Write-Host "Video recordings found:" -ForegroundColor Blue
+                    $videos | Select-Object -First 5 | ForEach-Object { Write-Host "  - $($_.FullName)" -ForegroundColor Blue }
+                }
+            } else {
+                Write-Host "No test-results directory found" -ForegroundColor Red
             }
             
             # Check if HTML report exists
             $reportPath = Join-Path $playwrightPath "playwright-report"
             if (Test-Path $reportPath) {
-                Write-Host "HTML report available at: $reportPath"
+                Write-Host "HTML report available at: $reportPath" -ForegroundColor Green
+                $indexPath = Join-Path $reportPath "index.html"
+                if (Test-Path $indexPath) {
+                    Write-Host "Open the following file in a browser for detailed test report:" -ForegroundColor Green
+                    Write-Host "  file:///$($indexPath.Replace('\', '/'))" -ForegroundColor Green
+                }
+            } else {
+                Write-Host "No HTML report directory found" -ForegroundColor Red
             }
+            
+            # Try to extract recent console output or error logs
+            $logFiles = Get-ChildItem -Path $playwrightPath -Recurse -Filter "*.log" -ErrorAction SilentlyContinue
+            if ($logFiles) {
+                Write-Host "Log files found:" -ForegroundColor Yellow
+                $logFiles | Select-Object -First 3 | ForEach-Object {
+                    Write-Host "  - $($_.FullName)" -ForegroundColor Yellow
+                    try {
+                        $logContent = Get-Content $_.FullName -Tail 20 -ErrorAction SilentlyContinue
+                        if ($logContent) {
+                            Write-Host "    Last 20 lines of $($_.Name):" -ForegroundColor Gray
+                            $logContent | ForEach-Object { Write-Host "      $_" -ForegroundColor Gray }
+                        }
+                    } catch {
+                        Write-Host "    Could not read log file: $($_.Name)"
+                    }
+                }
+            }
+            
+            # Provide troubleshooting suggestions
+            Write-Host "============================================" -ForegroundColor Yellow
+            Write-Host "TROUBLESHOOTING SUGGESTIONS:" -ForegroundColor Yellow
+            Write-Host "============================================" -ForegroundColor Yellow
+            Write-Host "1. Check the HTML report for detailed test execution flow" -ForegroundColor Yellow
+            Write-Host "2. Review screenshots to see the state when tests failed" -ForegroundColor Yellow
+            Write-Host "3. Use trace files for step-by-step debugging" -ForegroundColor Yellow
+            Write-Host "4. Verify environment variables are correctly set:" -ForegroundColor Yellow
+            Write-Host "   - APP_URL: $($env:APP_URL)" -ForegroundColor Yellow
+            Write-Host "   - APP_NAME: $($env:APP_NAME)" -ForegroundColor Yellow
+            Write-Host "   - O365_USERNAME: $(if($env:O365_USERNAME) { '[SET]' } else { '[NOT SET]' })" -ForegroundColor Yellow
+            Write-Host "   - O365_PASSWORD: $(if($env:O365_PASSWORD) { '[SET]' } else { '[NOT SET]' })" -ForegroundColor Yellow
+            Write-Host "5. Ensure the target application is accessible and responsive" -ForegroundColor Yellow
+            Write-Host "============================================" -ForegroundColor Yellow
         }
         
         # Return the exit code for pipeline decision making

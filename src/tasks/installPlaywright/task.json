@@ -11,7 +11,7 @@
     "version": {
         "Major": 2,
         "Minor": 2,
-        "Patch": 19
+        "Patch": 20
     },
     "groups": [
         {
@@ -39,7 +39,7 @@
             "name": "browser",
             "type": "pickList",
             "label": "Browser",
-            "defaultValue": "chromium",
+            "defaultValue": "all",
             "required": true,
             "helpMarkDown": "Browser to run the Playwright tests on",
             "groupName": "inputGroup",
