@@ -11,7 +11,7 @@
     "version": {
         "Major": 2,
         "Minor": 2,
-        "Patch": 16
+        "Patch": 17
     },
     "groups": [
         {
@@ -30,27 +30,84 @@
             "name": "testLocation",
             "type": "string",
             "label": "Test Location",
-            "defaultValue": "",
+            "defaultValue": "$(System.DefaultWorkingDirectory)/PlaywrightTests",
             "required": true,
             "helpMarkDown": "Path to the folder containing Playwright tests to copy",
             "groupName": "inputGroup"
         },
         {
-            "name": "branchName",
-            "type": "string",
-            "label": "Branch name",
-            "defaultValue": "main",
+            "name": "browser",
+            "type": "pickList",
+            "label": "Browser",
+            "defaultValue": "chromium",
             "required": true,
-            "helpMarkDown": "Name of the branch to commit to",
+            "helpMarkDown": "Browser to run the Playwright tests on",
+            "groupName": "inputGroup",
+            "options": {
+                "chromium": "Chromium",
+                "firefox": "Firefox",
+                "webkit": "WebKit",
+                "all": "All Browsers"
+            }
+        },
+        {
+            "name": "trace",
+            "type": "pickList",
+            "label": "Trace Mode",
+            "defaultValue": "off",
+            "required": true,
+            "helpMarkDown": "Enable tracing for debugging test failures. Traces capture screenshots, DOM snapshots, and network activity",
+            "groupName": "inputGroup",
+            "options": {
+                "off": "Off",
+                "on": "On",
+                "retain-on-failure": "Only on Failure",
+                "on-first-retry": "On First Retry"
+            }
+        },
+        {
+            "name": "outputLocation",
+            "type": "string",
+            "label": "Output Location",
+            "defaultValue": "$(System.DefaultWorkingDirectory)",
+            "required": true,
+            "helpMarkDown": "Directory where test results and reports will be copied. test-results and playwright-report folders will be created here",
+            "groupName": "outputGroup"
+        },
+        {
+            "name": "appUrl",
+            "type": "string",
+            "label": "Application URL",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "The URL of the Power Platform application to test",
             "groupName": "inputGroup"
         },
         {
-            "name": "tags",
+            "name": "appName",
             "type": "string",
-            "label": "Tags",
+            "label": "Application Name",
             "defaultValue": "",
             "required": false,
-            "helpMarkDown": "Comma-separated list of tags to add to the commit",
+            "helpMarkDown": "The name of the Power Platform application",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "o365Username",
+            "type": "string",
+            "label": "O365 Username",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Office 365 username for authentication",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "o365Password",
+            "type": "string",
+            "label": "O365 Password",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Office 365 password for authentication (use Azure DevOps secret variable)",
             "groupName": "inputGroup"
         }
     ],

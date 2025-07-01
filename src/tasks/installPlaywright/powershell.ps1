@@ -299,6 +299,7 @@ function Run-PlaywrightTests {
         [string]$PlaywrightFolder = "playwright",
         [string]$TestPattern = "",
         [string]$Browser = "chromium",
+        [string]$Trace = "off",
         [switch]$Headless = $true
     )
     
@@ -340,15 +341,28 @@ function Run-PlaywrightTests {
         
         # Add browser specification if provided
         if (![string]::IsNullOrWhiteSpace($Browser)) {
-            $testCommand += " --project=$Browser"
+            if ($Browser -eq "all") {
+                # Don't add --project flag to run all browsers
+                Write-Host "Running tests on all browsers"
+            } else {
+                $testCommand += " --project=$Browser"
+                Write-Host "Running tests on browser: $Browser"
+            }
         }
         
-        # Add headless mode
-        if ($Headless) {
-            $testCommand += " --headed=false"
+        # Add trace configuration if provided
+        if (![string]::IsNullOrWhiteSpace($Trace) -and $Trace -ne "off") {
+            $testCommand += " --trace=$Trace"
+            Write-Host "Trace mode enabled: $Trace"
+            
+            # Inform user about trace output location
+            if ($Trace -ne "off") {
+                Write-Host "Trace files will be saved to: test-results folder"
+            }
         } else {
-            $testCommand += " --headed=true"
+            Write-Host "Trace mode: disabled"
         }
+        
         
         # Add test pattern if specified
         if (![string]::IsNullOrWhiteSpace($TestPattern)) {
@@ -396,9 +410,141 @@ function Run-PlaywrightTests {
     }
 }
 
+# Copy test results and reports to output location
+function Copy-TestResultsToOutput {
+    param(
+        [string]$PlaywrightFolder = "playwright",
+        [string]$OutputLocation
+    )
+    
+    Write-Host "Copying test results and reports to output location..."
+    
+    # Get the playwright folder path
+    $currentDir = Get-Location
+    $playwrightPath = Join-Path $currentDir $PlaywrightFolder
+    
+    try {
+        # Validate output location
+        if ([string]::IsNullOrWhiteSpace($OutputLocation)) {
+            Write-Warning "No output location specified. Skipping results copy operation."
+            return
+        }
+        
+        # Check if playwright folder exists
+        if (!(Test-Path $playwrightPath)) {
+            Write-Warning "Playwright folder not found at: $playwrightPath. No results to copy."
+            return
+        }
+        
+        # Create output location if it doesn't exist
+        if (!(Test-Path $OutputLocation)) {
+            Write-Host "Creating output directory: $OutputLocation"
+            New-Item -Path $OutputLocation -ItemType Directory -Force | Out-Null
+        }
+        
+        # Define source and destination paths
+        $sourceTestResults = Join-Path $playwrightPath "test-results"
+        $sourceReports = Join-Path $playwrightPath "playwright-report"
+        $destTestResults = Join-Path $OutputLocation "test-results"
+        $destReports = Join-Path $OutputLocation "playwright-report"
+        
+        # Copy test-results folder if it exists
+        if (Test-Path $sourceTestResults) {
+            Write-Host "Copying test-results from: $sourceTestResults"
+            Write-Host "Copying test-results to: $destTestResults"
+            
+            # Remove existing destination if it exists
+            if (Test-Path $destTestResults) {
+                Remove-Item -Path $destTestResults -Recurse -Force
+            }
+            
+            Copy-Item -Path $sourceTestResults -Destination $destTestResults -Recurse -Force
+            Write-Host "Successfully copied test-results folder"
+        } else {
+            Write-Warning "No test-results folder found at: $sourceTestResults"
+        }
+        
+        # Copy playwright-report folder if it exists
+        if (Test-Path $sourceReports) {
+            Write-Host "Copying playwright-report from: $sourceReports"
+            Write-Host "Copying playwright-report to: $destReports"
+            
+            # Remove existing destination if it exists
+            if (Test-Path $destReports) {
+                Remove-Item -Path $destReports -Recurse -Force
+            }
+            
+            Copy-Item -Path $sourceReports -Destination $destReports -Recurse -Force
+            Write-Host "Successfully copied playwright-report folder"
+        } else {
+            Write-Warning "No playwright-report folder found at: $sourceReports"
+        }
+        
+        # Summary
+        Write-Host "Test results and reports copy operation completed"
+        Write-Host "Output location: $OutputLocation"
+        
+        if (Test-Path $destTestResults) {
+            Write-Host "✓ test-results folder available at: $destTestResults"
+        }
+        
+        if (Test-Path $destReports) {
+            Write-Host "✓ playwright-report folder available at: $destReports"
+        }
+        
+    } catch {
+        Write-Error "Failed to copy test results and reports: $($_.Exception.Message)"
+        throw
+    }
+}
+
 # Display the developer message
 $developerMessage = Fetch-DeveloperMessage
 Write-Host "Developer Message: $developerMessage"
+
+# Get inputs from the task
+$testLocation = Get-VstsInput -Name 'testLocation'
+$browser = Get-VstsInput -Name 'browser'
+$trace = Get-VstsInput -Name 'trace'
+$outputLocation = Get-VstsInput -Name 'outputLocation'
+$appUrl = Get-VstsInput -Name 'appUrl'
+$appName = Get-VstsInput -Name 'appName'
+$o365Username = Get-VstsInput -Name 'o365Username'
+$o365Password = Get-VstsInput -Name 'o365Password'
+$branchName = Get-VstsInput -Name 'branchName'
+$tags = Get-VstsInput -Name 'tags'
+
+# Set environment variables for Playwright tests
+Write-Host "==========================================================="
+Write-Host "Setting environment variables for Playwright tests..."
+if (![string]::IsNullOrWhiteSpace($appUrl)) {
+    $env:APP_URL = $appUrl
+    Write-Host "APP_URL environment variable set"
+} else {
+    Write-Host "APP_URL not provided - skipping"
+}
+
+if (![string]::IsNullOrWhiteSpace($appName)) {
+    $env:APP_NAME = $appName
+    Write-Host "APP_NAME environment variable set"
+} else {
+    Write-Host "APP_NAME not provided - skipping"
+}
+
+if (![string]::IsNullOrWhiteSpace($o365Username)) {
+    $env:O365_USERNAME = $o365Username
+    Write-Host "O365_USERNAME environment variable set"
+} else {
+    Write-Host "O365_USERNAME not provided - skipping"
+}
+
+if (![string]::IsNullOrWhiteSpace($o365Password)) {
+    $env:O365_PASSWORD = $o365Password
+    Write-Host "O365_PASSWORD environment variable set"
+} else {
+    Write-Host "O365_PASSWORD not provided - skipping"
+}
+Write-Host "==========================================================="
 
 # Install Node.js on the target machine
 Write-Host "==========================================================="
@@ -427,13 +573,13 @@ Write-Host "==========================================================="
 # Run Playwright tests
 Write-Host "==========================================================="
 Write-Host "Running Playwright tests..."
-$testResults = Run-PlaywrightTests
+$testResults = Run-PlaywrightTests -Browser $browser -Trace $trace
 Write-Host "==========================================================="
 
-# Run Playwright tests
+# Copy test results and reports to output location
 Write-Host "==========================================================="
-Write-Host "Running Playwright tests..."
-Run-PlaywrightTests -PlaywrightFolder "playwright" -TestPattern "**/*.spec.js" -Browser "chromium" -Headless $true
+Write-Host "Copying test results and reports to output location..."
+Copy-TestResultsToOutput -OutputLocation $outputLocation
 Write-Host "==========================================================="
 
 
@@ -445,9 +591,4 @@ Write-Host "Contributors:"
 #Write-Host " - Developer A (Contributions: Improved Git configuration handling)"
 #Write-Host " - Developer B (Contributions: Added support for custom commit messages)"
 Write-Host "==========================================================="
-
-# Get inputs from the task
-$testLocation = Get-VstsInput -Name 'testLocation'
-$branchName = Get-VstsInput -Name 'branchName'
-$tags = Get-VstsInput -Name 'tags'
 
