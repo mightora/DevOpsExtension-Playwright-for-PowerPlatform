@@ -241,7 +241,16 @@ function Copy-TestsToPlaywright {
         
         # Check if the test location exists
         if (!(Test-Path $TestLocation)) {
-            throw "Test location not found: $TestLocation"
+            Write-Warning "Test location not found: $TestLocation"
+            Write-Host "Attempting to create test location directory..."
+            try {
+                New-Item -Path $TestLocation -ItemType Directory -Force | Out-Null
+                Write-Host "Created test location directory: $TestLocation"
+                Write-Warning "Directory was empty, no tests to copy."
+                return
+            } catch {
+                throw "Test location not found and could not be created: $TestLocation. Error: $($_.Exception.Message)"
+            }
         }
         
         # Check if playwright folder exists
@@ -277,12 +286,17 @@ function Copy-TestsToPlaywright {
             
             # Create destination directory if it doesn't exist
             if (!(Test-Path $destinationDir)) {
+                Write-Host "Creating directory: $destinationDir"
                 New-Item -Path $destinationDir -ItemType Directory -Force | Out-Null
             }
             
             # Copy the file
-            Copy-Item -Path $file.FullName -Destination $destinationPath -Force
-            Write-Host "Copied: $($file.Name) -> $relativePath"
+            try {
+                Copy-Item -Path $file.FullName -Destination $destinationPath -Force
+                Write-Host "Copied: $($file.Name) -> $relativePath"
+            } catch {
+                Write-Warning "Failed to copy $($file.Name): $($_.Exception.Message)"
+            }
         }
         
         Write-Host "Successfully copied $($testFiles.Count) test files to Playwright tests folder"
@@ -439,7 +453,12 @@ function Copy-TestResultsToOutput {
         # Create output location if it doesn't exist
         if (!(Test-Path $OutputLocation)) {
             Write-Host "Creating output directory: $OutputLocation"
-            New-Item -Path $OutputLocation -ItemType Directory -Force | Out-Null
+            try {
+                New-Item -Path $OutputLocation -ItemType Directory -Force | Out-Null
+                Write-Host "Successfully created output directory"
+            } catch {
+                throw "Failed to create output directory: $OutputLocation. Error: $($_.Exception.Message)"
+            }
         }
         
         # Define source and destination paths
@@ -453,13 +472,23 @@ function Copy-TestResultsToOutput {
             Write-Host "Copying test-results from: $sourceTestResults"
             Write-Host "Copying test-results to: $destTestResults"
             
-            # Remove existing destination if it exists
-            if (Test-Path $destTestResults) {
-                Remove-Item -Path $destTestResults -Recurse -Force
+            try {
+                # Remove existing destination if it exists
+                if (Test-Path $destTestResults) {
+                    Remove-Item -Path $destTestResults -Recurse -Force
+                }
+                
+                # Ensure parent directory exists
+                $destParent = Split-Path $destTestResults -Parent
+                if (!(Test-Path $destParent)) {
+                    New-Item -Path $destParent -ItemType Directory -Force | Out-Null
+                }
+                
+                Copy-Item -Path $sourceTestResults -Destination $destTestResults -Recurse -Force
+                Write-Host "Successfully copied test-results folder"
+            } catch {
+                Write-Warning "Failed to copy test-results folder: $($_.Exception.Message)"
             }
-            
-            Copy-Item -Path $sourceTestResults -Destination $destTestResults -Recurse -Force
-            Write-Host "Successfully copied test-results folder"
         } else {
             Write-Warning "No test-results folder found at: $sourceTestResults"
         }
@@ -469,13 +498,23 @@ function Copy-TestResultsToOutput {
             Write-Host "Copying playwright-report from: $sourceReports"
             Write-Host "Copying playwright-report to: $destReports"
             
-            # Remove existing destination if it exists
-            if (Test-Path $destReports) {
-                Remove-Item -Path $destReports -Recurse -Force
+            try {
+                # Remove existing destination if it exists
+                if (Test-Path $destReports) {
+                    Remove-Item -Path $destReports -Recurse -Force
+                }
+                
+                # Ensure parent directory exists
+                $destParent = Split-Path $destReports -Parent
+                if (!(Test-Path $destParent)) {
+                    New-Item -Path $destParent -ItemType Directory -Force | Out-Null
+                }
+                
+                Copy-Item -Path $sourceReports -Destination $destReports -Recurse -Force
+                Write-Host "Successfully copied playwright-report folder"
+            } catch {
+                Write-Warning "Failed to copy playwright-report folder: $($_.Exception.Message)"
             }
-            
-            Copy-Item -Path $sourceReports -Destination $destReports -Recurse -Force
-            Write-Host "Successfully copied playwright-report folder"
         } else {
             Write-Warning "No playwright-report folder found at: $sourceReports"
         }
