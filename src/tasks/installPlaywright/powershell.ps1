@@ -19,6 +19,27 @@ param()
 # Import the VSTS Task SDK
 Import-Module $PSScriptRoot\ps_modules\VstsTaskSdk\VstsTaskSdk.psd1
 
+# Helper function to safely create directories
+function New-DirectoryIfNotExists {
+    param(
+        [string]$Path,
+        [string]$Description = "directory"
+    )
+    
+    if (![string]::IsNullOrWhiteSpace($Path) -and !(Test-Path $Path)) {
+        try {
+            Write-Host "Creating $Description at: $Path"
+            New-Item -Path $Path -ItemType Directory -Force | Out-Null
+            Write-Host "Successfully created $Description"
+            return $true
+        } catch {
+            Write-Error "Failed to create $Description at $Path. Error: $($_.Exception.Message)"
+            return $false
+        }
+    }
+    return $true
+}
+
 # Fetch and display the developer message
 function Fetch-DeveloperMessage {
     $url = "https://developer-message.mightora.io/api/HttpTrigger?appname=commitToRepo"
@@ -260,8 +281,9 @@ function Copy-TestsToPlaywright {
         
         # Create tests directory if it doesn't exist
         if (!(Test-Path $playwrightTestsPath)) {
-            Write-Host "Creating tests directory: $playwrightTestsPath"
-            New-Item -Path $playwrightTestsPath -ItemType Directory -Force | Out-Null
+            if (!(New-DirectoryIfNotExists -Path $playwrightTestsPath -Description "tests directory")) {
+                throw "Failed to create tests directory at: $playwrightTestsPath"
+            }
         }
         
         # Get all test files from the source location
@@ -286,8 +308,10 @@ function Copy-TestsToPlaywright {
             
             # Create destination directory if it doesn't exist
             if (!(Test-Path $destinationDir)) {
-                Write-Host "Creating directory: $destinationDir"
-                New-Item -Path $destinationDir -ItemType Directory -Force | Out-Null
+                if (!(New-DirectoryIfNotExists -Path $destinationDir -Description "destination directory")) {
+                    Write-Warning "Failed to create destination directory: $destinationDir. Skipping file: $($file.Name)"
+                    continue
+                }
             }
             
             # Copy the file
@@ -452,12 +476,8 @@ function Copy-TestResultsToOutput {
         
         # Create output location if it doesn't exist
         if (!(Test-Path $OutputLocation)) {
-            Write-Host "Creating output directory: $OutputLocation"
-            try {
-                New-Item -Path $OutputLocation -ItemType Directory -Force | Out-Null
-                Write-Host "Successfully created output directory"
-            } catch {
-                throw "Failed to create output directory: $OutputLocation. Error: $($_.Exception.Message)"
+            if (!(New-DirectoryIfNotExists -Path $OutputLocation -Description "output directory")) {
+                throw "Failed to create output directory: $OutputLocation"
             }
         }
         
@@ -475,19 +495,34 @@ function Copy-TestResultsToOutput {
             try {
                 # Remove existing destination if it exists
                 if (Test-Path $destTestResults) {
+                    Write-Host "Removing existing test-results folder..."
                     Remove-Item -Path $destTestResults -Recurse -Force
                 }
                 
-                # Ensure parent directory exists
+                # Ensure parent directory exists and create the full path
                 $destParent = Split-Path $destTestResults -Parent
                 if (!(Test-Path $destParent)) {
+                    Write-Host "Creating parent directory: $destParent"
                     New-Item -Path $destParent -ItemType Directory -Force | Out-Null
                 }
                 
-                Copy-Item -Path $sourceTestResults -Destination $destTestResults -Recurse -Force
+                # Copy the entire folder structure
+                Write-Host "Copying test-results folder structure..."
+                Copy-Item -Path $sourceTestResults -Destination $OutputLocation -Recurse -Force
                 Write-Host "Successfully copied test-results folder"
             } catch {
                 Write-Warning "Failed to copy test-results folder: $($_.Exception.Message)"
+                Write-Host "Attempting alternative copy method..."
+                try {
+                    # Alternative method: Create destination first, then copy contents
+                    if (!(Test-Path $destTestResults)) {
+                        New-Item -Path $destTestResults -ItemType Directory -Force | Out-Null
+                    }
+                    Copy-Item -Path "$sourceTestResults\*" -Destination $destTestResults -Recurse -Force
+                    Write-Host "Successfully copied test-results using alternative method"
+                } catch {
+                    Write-Error "Failed to copy test-results with both methods: $($_.Exception.Message)"
+                }
             }
         } else {
             Write-Warning "No test-results folder found at: $sourceTestResults"
@@ -501,19 +536,34 @@ function Copy-TestResultsToOutput {
             try {
                 # Remove existing destination if it exists
                 if (Test-Path $destReports) {
+                    Write-Host "Removing existing playwright-report folder..."
                     Remove-Item -Path $destReports -Recurse -Force
                 }
                 
-                # Ensure parent directory exists
+                # Ensure parent directory exists and create the full path
                 $destParent = Split-Path $destReports -Parent
                 if (!(Test-Path $destParent)) {
+                    Write-Host "Creating parent directory: $destParent"
                     New-Item -Path $destParent -ItemType Directory -Force | Out-Null
                 }
                 
-                Copy-Item -Path $sourceReports -Destination $destReports -Recurse -Force
+                # Copy the entire folder structure
+                Write-Host "Copying playwright-report folder structure..."
+                Copy-Item -Path $sourceReports -Destination $OutputLocation -Recurse -Force
                 Write-Host "Successfully copied playwright-report folder"
             } catch {
                 Write-Warning "Failed to copy playwright-report folder: $($_.Exception.Message)"
+                Write-Host "Attempting alternative copy method..."
+                try {
+                    # Alternative method: Create destination first, then copy contents
+                    if (!(Test-Path $destReports)) {
+                        New-Item -Path $destReports -ItemType Directory -Force | Out-Null
+                    }
+                    Copy-Item -Path "$sourceReports\*" -Destination $destReports -Recurse -Force
+                    Write-Host "Successfully copied playwright-report using alternative method"
+                } catch {
+                    Write-Error "Failed to copy playwright-report with both methods: $($_.Exception.Message)"
+                }
             }
         } else {
             Write-Warning "No playwright-report folder found at: $sourceReports"

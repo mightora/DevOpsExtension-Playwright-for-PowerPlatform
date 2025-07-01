@@ -1,8 +1,8 @@
 {
     "manifestVersion": 1,
     "id": "mightora-playwright-for-power-platform",
-    "name": "DEV 1.0.6 - Playwright for Power Platform",
-    "version": "1.0.6",
+    "name": "DEV 1.0.7 - Playwright for Power Platform",
+    "version": "1.0.7",
     "publisher": "mightoraio",
     "targets": [
         {
@@ -62,8 +62,9 @@
                 "ms.vss-distributed-task.tasks"
             ],
             "properties": {
-                "name": "installPlaywright"
-            }
+                "name": "installPlaywright",
+                "friendlyName": "Install Playwright for PowerPlatform"
+             }
         }
     ]
 }
