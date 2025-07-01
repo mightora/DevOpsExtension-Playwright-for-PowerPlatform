@@ -11,7 +11,7 @@
     "version": {
         "Major": 2,
         "Minor": 2,
-        "Patch": 15
+        "Patch": 16
     },
     "groups": [
         {
@@ -27,12 +27,12 @@
     ],
     "inputs": [
         {
-            "name": "commitMsg",
+            "name": "testLocation",
             "type": "string",
-            "label": "Commit message",
+            "label": "Test Location",
             "defaultValue": "",
             "required": true,
-            "helpMarkDown": "Commit message",
+            "helpMarkDown": "Path to the folder containing Playwright tests to copy",
             "groupName": "inputGroup"
         },
         {

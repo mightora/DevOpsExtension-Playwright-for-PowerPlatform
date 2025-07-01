@@ -150,6 +150,252 @@ function Clone-PlaywrightRepository {
     }
 }
 
+# Install Playwright from the cloned repository
+function Install-PlaywrightFromRepository {
+    param(
+        [string]$PlaywrightFolder = "playwright"
+    )
+    
+    Write-Host "Installing Playwright from repository..."
+    
+    # Get the playwright folder path
+    $currentDir = Get-Location
+    $playwrightPath = Join-Path $currentDir $PlaywrightFolder
+    
+    try {
+        # Check if the playwright folder exists
+        if (!(Test-Path $playwrightPath)) {
+            throw "Playwright folder not found at: $playwrightPath"
+        }
+        
+        # Change to the playwright directory
+        Write-Host "Changing to playwright directory: $playwrightPath"
+        Push-Location $playwrightPath
+        
+        # Check if package.json exists
+        if (!(Test-Path "package.json")) {
+            throw "package.json not found in the playwright directory"
+        }
+        
+        # Install npm dependencies
+        Write-Host "Installing npm dependencies..."
+        & npm install
+        
+        if ($LASTEXITCODE -ne 0) {
+            throw "npm install failed with exit code: $LASTEXITCODE"
+        }
+        
+        Write-Host "npm dependencies installed successfully"
+        
+        # Install Playwright browsers
+        Write-Host "Installing Playwright browsers..."
+        & npx playwright install
+        
+        if ($LASTEXITCODE -ne 0) {
+            throw "Playwright browser installation failed with exit code: $LASTEXITCODE"
+        }
+        
+        Write-Host "Playwright browsers installed successfully"
+        
+        # Optional: Install Playwright dependencies for specific OS
+        Write-Host "Installing Playwright system dependencies..."
+        & npx playwright install-deps
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Playwright system dependencies installation completed with warnings (exit code: $LASTEXITCODE)"
+        } else {
+            Write-Host "Playwright system dependencies installed successfully"
+        }
+        
+        Write-Host "Playwright installation completed successfully"
+        
+    } catch {
+        Write-Error "Failed to install Playwright: $($_.Exception.Message)"
+        throw
+    } finally {
+        # Return to the original directory
+        Pop-Location
+    }
+}
+
+# Copy tests from specified location to playwright tests folder
+function Copy-TestsToPlaywright {
+    param(
+        [string]$TestLocation,
+        [string]$PlaywrightFolder = "playwright"
+    )
+    
+    Write-Host "Copying tests from specified location to Playwright tests folder..."
+    
+    # Get the current directory and playwright path  
+    $currentDir = Get-Location
+    $playwrightPath = Join-Path $currentDir $PlaywrightFolder
+    $playwrightTestsPath = Join-Path $playwrightPath "tests"
+    
+    try {
+        # Validate test location
+        if ([string]::IsNullOrWhiteSpace($TestLocation)) {
+            Write-Warning "No test location specified. Skipping test copy operation."
+            return
+        }
+        
+        # Check if the test location exists
+        if (!(Test-Path $TestLocation)) {
+            throw "Test location not found: $TestLocation"
+        }
+        
+        # Check if playwright folder exists
+        if (!(Test-Path $playwrightPath)) {
+            throw "Playwright folder not found at: $playwrightPath"
+        }
+        
+        # Create tests directory if it doesn't exist
+        if (!(Test-Path $playwrightTestsPath)) {
+            Write-Host "Creating tests directory: $playwrightTestsPath"
+            New-Item -Path $playwrightTestsPath -ItemType Directory -Force | Out-Null
+        }
+        
+        # Get all test files from the source location
+        Write-Host "Source test location: $TestLocation"
+        Write-Host "Destination tests folder: $playwrightTestsPath"
+        
+        # Copy all files from test location to playwright tests folder
+        $testFiles = Get-ChildItem -Path $TestLocation -Recurse -File
+        
+        if ($testFiles.Count -eq 0) {
+            Write-Warning "No test files found in the specified location: $TestLocation"
+            return
+        }
+        
+        Write-Host "Found $($testFiles.Count) test files to copy"
+        
+        foreach ($file in $testFiles) {
+            # Calculate relative path to maintain directory structure
+            $relativePath = $file.FullName.Substring($TestLocation.Length).TrimStart('\', '/')
+            $destinationPath = Join-Path $playwrightTestsPath $relativePath
+            $destinationDir = Split-Path $destinationPath -Parent
+            
+            # Create destination directory if it doesn't exist
+            if (!(Test-Path $destinationDir)) {
+                New-Item -Path $destinationDir -ItemType Directory -Force | Out-Null
+            }
+            
+            # Copy the file
+            Copy-Item -Path $file.FullName -Destination $destinationPath -Force
+            Write-Host "Copied: $($file.Name) -> $relativePath"
+        }
+        
+        Write-Host "Successfully copied $($testFiles.Count) test files to Playwright tests folder"
+        
+    } catch {
+        Write-Error "Failed to copy tests to Playwright folder: $($_.Exception.Message)"
+        throw
+    }
+}
+
+# Run Playwright tests
+function Run-PlaywrightTests {
+    param(
+        [string]$PlaywrightFolder = "playwright",
+        [string]$TestPattern = "",
+        [string]$Browser = "chromium",
+        [switch]$Headless = $true
+    )
+    
+    Write-Host "Running Playwright tests..."
+    
+    # Get the playwright folder path
+    $currentDir = Get-Location
+    $playwrightPath = Join-Path $currentDir $PlaywrightFolder
+    
+    try {
+        # Check if playwright folder exists
+        if (!(Test-Path $playwrightPath)) {
+            throw "Playwright folder not found at: $playwrightPath"
+        }
+        
+        # Change to the playwright directory
+        Write-Host "Changing to playwright directory: $playwrightPath"
+        Push-Location $playwrightPath
+        
+        # Check if tests directory exists
+        $testsPath = Join-Path $playwrightPath "tests"
+        if (!(Test-Path $testsPath)) {
+            Write-Warning "No tests directory found at: $testsPath"
+            Write-Host "Skipping test execution."
+            return
+        }
+        
+        # Count test files
+        $testFiles = Get-ChildItem -Path $testsPath -Recurse -File -Include "*.spec.js", "*.spec.ts", "*.test.js", "*.test.ts"
+        Write-Host "Found $($testFiles.Count) test files to execute"
+        
+        if ($testFiles.Count -eq 0) {
+            Write-Warning "No Playwright test files found in the tests directory"
+            return
+        }
+        
+        # Build the test command
+        $testCommand = "npx playwright test"
+        
+        # Add browser specification if provided
+        if (![string]::IsNullOrWhiteSpace($Browser)) {
+            $testCommand += " --project=$Browser"
+        }
+        
+        # Add headless mode
+        if ($Headless) {
+            $testCommand += " --headed=false"
+        } else {
+            $testCommand += " --headed=true"
+        }
+        
+        # Add test pattern if specified
+        if (![string]::IsNullOrWhiteSpace($TestPattern)) {
+            $testCommand += " $TestPattern"
+        }
+        
+        # Add reporter for better output in CI/CD
+        $testCommand += " --reporter=list,json"
+        
+        Write-Host "Executing command: $testCommand"
+        Write-Host "Starting Playwright test execution..."
+        
+        # Execute the tests
+        Invoke-Expression $testCommand
+        
+        $testExitCode = $LASTEXITCODE
+        
+        if ($testExitCode -eq 0) {
+            Write-Host "All Playwright tests passed successfully!" -ForegroundColor Green
+        } else {
+            Write-Warning "Some Playwright tests failed or encountered issues (Exit Code: $testExitCode)"
+            
+            # Check if test results exist
+            $resultsPath = Join-Path $playwrightPath "test-results"
+            if (Test-Path $resultsPath) {
+                Write-Host "Test results available at: $resultsPath"
+            }
+            
+            # Check if HTML report exists
+            $reportPath = Join-Path $playwrightPath "playwright-report"
+            if (Test-Path $reportPath) {
+                Write-Host "HTML report available at: $reportPath"
+            }
+        }
+        
+        # Return the exit code for pipeline decision making
+        return $testExitCode
+        
+    } catch {
+        Write-Error "Failed to run Playwright tests: $($_.Exception.Message)"
+        throw
+    } finally {
+        # Return to the original directory
+        Pop-Location
+    }
+}
+
 # Display the developer message
 $developerMessage = Fetch-DeveloperMessage
 Write-Host "Developer Message: $developerMessage"
@@ -166,10 +412,28 @@ Write-Host "Cloning Playwright repository..."
 Clone-PlaywrightRepository
 Write-Host "==========================================================="
 
-# Clone the Playwright repository
+# Install Playwright from the cloned repository
 Write-Host "==========================================================="
-Write-Host "Cloning Playwright repository..."
-Clone-PlaywrightRepository
+Write-Host "Installing Playwright from repository..."
+Install-PlaywrightFromRepository
+Write-Host "==========================================================="
+
+# Copy tests from specified location to playwright tests folder
+Write-Host "==========================================================="
+Write-Host "Copying tests to Playwright tests folder..."
+Copy-TestsToPlaywright -TestLocation $testLocation
+Write-Host "==========================================================="
+
+# Run Playwright tests
+Write-Host "==========================================================="
+Write-Host "Running Playwright tests..."
+$testResults = Run-PlaywrightTests
+Write-Host "==========================================================="
+
+# Run Playwright tests
+Write-Host "==========================================================="
+Write-Host "Running Playwright tests..."
+Run-PlaywrightTests -PlaywrightFolder "playwright" -TestPattern "**/*.spec.js" -Browser "chromium" -Headless $true
 Write-Host "==========================================================="
 
 
@@ -183,7 +447,7 @@ Write-Host "Contributors:"
 Write-Host "==========================================================="
 
 # Get inputs from the task
-$commitMsg = Get-VstsInput -Name 'commitMsg'
+$testLocation = Get-VstsInput -Name 'testLocation'
 $branchName = Get-VstsInput -Name 'branchName'
 $tags = Get-VstsInput -Name 'tags'
 
