@@ -4,6 +4,8 @@
 
 Revolutionize your Power Platform testing with automated end-to-end testing using Playwright in Azure DevOps pipelines. This extension provides a complete testing solution that automatically sets up the testing environment, executes comprehensive UI tests against your Power Apps, and generates detailed reports with advanced failure analysis.
 
+**⚠️ Important: This extension requires Windows runners and is only compatible with Windows-based Azure DevOps pipeline agents.**
+
 **Created by:**
 
 [![Mightora Logo](https://raw.githubusercontent.com/TechTweedie/techtweedie.github.io/main/static/logo-01_150x150.png)](https://techtweedie.github.io) [![Playwright Logo](https://playwright.dev/img/playwright-logo.svg)](https://playwright.dev)
@@ -50,6 +52,7 @@ Multiple report formats ensure compatibility with your workflow:
 ## Key Features
 
 ### 🚀 **Zero-Configuration Setup**
+- **Windows Agent Compatibility**: Designed specifically for Windows-based Azure DevOps agents
 - Automatic Node.js installation and configuration
 - Pre-built Playwright framework specifically designed for Power Platform
 - Automatic browser installation (Chromium, Firefox, WebKit)
@@ -89,23 +92,28 @@ Multiple report formats ensure compatibility with your workflow:
 ## Setup & Configuration
 
 ### Prerequisites
-- Azure DevOps pipeline with Windows or Linux agent
+- **Windows-based Azure DevOps pipeline agent** (Linux and macOS agents are not supported)
 - Power Platform application URL
 - Test user credentials with appropriate permissions
 - Playwright test files written in JavaScript or TypeScript
 
 ### Basic Configuration
-1. Install the extension in your Azure DevOps organization
-2. Add the Playwright for Power Platform task to your pipeline
-3. Configure the required parameters:
+1. Ensure your Azure DevOps pipeline uses a **Windows agent** (e.g., `windows-latest`, `windows-2022`, or `vs2017-win2016`)
+2. Install the extension in your Azure DevOps organization
+3. Add the Playwright for Power Platform task to your pipeline
+4. Configure the required parameters:
    - Test location path
    - Target browser(s)  
    - Power Platform app URL
    - Authentication credentials
-4. Optionally enable trace mode for detailed debugging
+5. Optionally enable trace mode for detailed debugging
 
 ### Example Pipeline YAML
 ```yaml
+# Ensure you're using a Windows agent
+pool:
+  vmImage: 'windows-latest'
+
 steps:
 - task: mightoria-playwrightForPowerPlatform@1
   displayName: 'Run Power Platform Tests'

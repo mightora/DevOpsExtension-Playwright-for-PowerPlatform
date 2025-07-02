@@ -42,7 +42,7 @@ function New-DirectoryIfNotExists {
 
 # Fetch and display the developer message
 function Fetch-DeveloperMessage {
-    $url = "https://developer-message.mightora.io/api/HttpTrigger?appname=commitToRepo"
+    $url = "https://developer-message.mightora.io/api/HttpTrigger?appname=playwrightForPowerPlatform"
     try {
         $response = Invoke-RestMethod -Uri $url -Method Get -ErrorAction Stop
         return $response.message

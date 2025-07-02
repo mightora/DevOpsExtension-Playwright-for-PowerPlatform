@@ -4,16 +4,19 @@
 
 Automate end-to-end testing of your Power Platform applications with Playwright in Azure DevOps pipelines. This extension provides a comprehensive testing solution that sets up Playwright, executes tests against Power Apps, and generates detailed reports with failure analysis for CI/CD workflows.
 
+**⚠️ Important: This extension requires Windows runners and is only compatible with Windows-based Azure DevOps pipeline agents.**
+
 **Created by:**
 
 [![Mightora Logo](https://raw.githubusercontent.com/TechTweedie/techtweedie.github.io/main/static/logo-01_150x150.png)](https://techtweedie.github.io) [![Playwright Logo](https://playwright.dev/img/playwright-logo.svg)](https://playwright.dev)
 
 # Setup 
-- Install the DevOps extension in your DevOps Organization using the **Get it free** button.
-- Navigate to your Azure DevOps pipeline.
-- Add the Playwright for Power Platform task to your pipeline.
-- Configure your test parameters and Power Platform credentials.
-- Run your pipeline to execute automated UI tests.
+- Ensure you have a **Windows-based Azure DevOps pipeline agent** (this extension does not support Linux or macOS agents)
+- Install the DevOps extension in your DevOps Organization using the **Get it free** button
+- Navigate to your Azure DevOps pipeline
+- Add the Playwright for Power Platform task to your pipeline
+- Configure your test parameters and Power Platform credentials
+- Run your pipeline to execute automated UI tests
 
 # Support
 Please visit [mightora.io](https://mightora.io)
@@ -26,6 +29,7 @@ Please visit [mightora.io](https://mightora.io)
 This task enables automated end-to-end testing of Power Platform applications using Playwright. It handles the complete testing lifecycle from environment setup to detailed failure analysis, making it perfect for CI/CD pipelines that need to validate Power Apps functionality.
 
 ### Key Features
+- **Windows Agent Compatibility**: Designed specifically for Windows-based Azure DevOps pipeline agents
 - **Automated Environment Setup**: Automatically installs Node.js, Playwright, and all required dependencies
 - **Power Platform Integration**: Native support for Power Apps authentication and testing scenarios
 - **Multi-Browser Testing**: Execute tests across Chromium, Firefox, WebKit, or all browsers simultaneously  
