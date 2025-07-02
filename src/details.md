@@ -8,7 +8,7 @@ Revolutionize your Power Platform testing with automated end-to-end testing usin
 
 **Created by:**
 
-[![Mightora Logo](https://raw.githubusercontent.com/TechTweedie/techtweedie.github.io/main/static/logo-01_150x150.png)](https://techtweedie.github.io) [![Playwright Logo](https://playwright.dev/img/playwright-logo.svg)](https://playwright.dev)
+[![Mightora Logo](https://raw.githubusercontent.com/TechTweedie/techtweedie.github.io/main/static/logo-01_150x150.png)](https://techtweedie.github.io) 
 
 ## Why Choose Playwright for Power Platform Testing?
 

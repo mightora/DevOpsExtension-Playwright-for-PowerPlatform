@@ -8,7 +8,7 @@ Automate end-to-end testing of your Power Platform applications with Playwright 
 
 **Created by:**
 
-[![Mightora Logo](https://raw.githubusercontent.com/TechTweedie/techtweedie.github.io/main/static/logo-01_150x150.png)](https://techtweedie.github.io) [![Playwright Logo](https://playwright.dev/img/playwright-logo.svg)](https://playwright.dev)
+[![Mightora Logo](https://raw.githubusercontent.com/TechTweedie/techtweedie.github.io/main/static/logo-01_150x150.png)](https://techtweedie.github.io) 
 
 # Setup 
 - Ensure you have a **Windows-based Azure DevOps pipeline agent** (this extension does not support Linux or macOS agents)
