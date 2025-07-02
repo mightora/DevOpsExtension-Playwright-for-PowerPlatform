@@ -757,8 +757,8 @@ Write-Host "==========================================================="
 
 # Output the script information at runtime
 Write-Host "==========================================================="
-Write-Host "Task: Mightora Commit To Git Repository"
-Write-Host "Originally Created By: Ian Tweedie [https://iantweedie.biz] (Date: 2024-10-08)"
+Write-Host "Task: Mightora Playwright for Power Platform"
+Write-Host "Originally Created By: Ian Tweedie [https://iantweedie.biz] (Date: 2025-05-25)"
 Write-Host "Contributors:"
 #Write-Host " - Developer A (Contributions: Improved Git configuration handling)"
 #Write-Host " - Developer B (Contributions: Added support for custom commit messages)"
