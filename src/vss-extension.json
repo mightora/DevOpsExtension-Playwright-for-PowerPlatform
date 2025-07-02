@@ -13,7 +13,7 @@
             "id": "Microsoft.VisualStudio.Services"
         }
     ],
-    "description": "DevOps extension that enables automated end-to-end testing of Power Platform applications using Playwright. Seamlessly integrates with Azure DevOps pipelines to execute UI tests, validate Power Apps functionality, and generate detailed test reports with failure analysis, screenshots, and traces for comprehensive quality assurance.",
+    "description": "Automate end-to-end testing of Power Platform applications using Playwright in Azure DevOps pipelines with comprehensive reporting and failure analysis.",
     "categories": [
         "Azure Pipelines"
     ],
