@@ -398,8 +398,8 @@ function Run-PlaywrightTests {
         }
         
         # Force headless mode for CI/CD performance
-        $testCommand += " --headed=false"
-        Write-Host "Running in headless mode for optimal CI/CD performance"
+        #$testCommand += " --headed=false"
+        #Write-Host "Running in headless mode for optimal CI/CD performance"
         
         # Add trace configuration if provided
         if (![string]::IsNullOrWhiteSpace($Trace) -and $Trace -ne "off") {
