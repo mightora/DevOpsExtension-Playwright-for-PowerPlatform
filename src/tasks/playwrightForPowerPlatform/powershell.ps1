@@ -408,7 +408,7 @@ function Run-PlaywrightTests {
         }
         
         # Add reporter for better output in CI/CD
-        $testCommand += " --reporter=list,html,json,junit"
+        #$testCommand += " --reporter=list,html,json,junit"
         
         # Add additional flags for better debugging
         $testCommand += " --output=test-results" 
