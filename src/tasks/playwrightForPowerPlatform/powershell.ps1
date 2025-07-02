@@ -174,7 +174,8 @@ function Clone-PlaywrightRepository {
 # Install Playwright from the cloned repository
 function Install-PlaywrightFromRepository {
     param(
-        [string]$PlaywrightFolder = "playwright"
+        [string]$PlaywrightFolder = "playwright",
+        [string]$TargetBrowser = "chromium"
     )
     
     Write-Host "Installing Playwright from repository..."
@@ -198,19 +199,32 @@ function Install-PlaywrightFromRepository {
             throw "package.json not found in the playwright directory"
         }
         
-        # Install npm dependencies
+        # Set browser environment variable for the installation process
+        $env:PLAYWRIGHT_BROWSER = $TargetBrowser
+        Write-Host "Target browser set to: $TargetBrowser"
+        
+        # Install npm dependencies with cache optimization
         Write-Host "Installing npm dependencies..."
-        & npm install
+        & npm ci --prefer-offline --no-audit --no-fund
         
         if ($LASTEXITCODE -ne 0) {
-            throw "npm install failed with exit code: $LASTEXITCODE"
+            Write-Warning "npm ci failed, falling back to npm install..."
+            & npm install --prefer-offline --no-audit --no-fund
+            if ($LASTEXITCODE -ne 0) {
+                throw "npm install failed with exit code: $LASTEXITCODE"
+            }
         }
         
         Write-Host "npm dependencies installed successfully"
         
-        # Install Playwright browsers
-        Write-Host "Installing Playwright browsers..."
-        & npx playwright install
+        # Install Playwright browsers - optimized for specific browser only
+        Write-Host "Installing Playwright browsers (optimized for target browser only)..."
+        
+        # Get browser from environment or default to chromium
+        $targetBrowser = if ($env:PLAYWRIGHT_BROWSER) { $env:PLAYWRIGHT_BROWSER } else { "chromium" }
+        
+        Write-Host "Installing only $targetBrowser browser for faster execution..."
+        & npx playwright install $targetBrowser
         
         if ($LASTEXITCODE -ne 0) {
             throw "Playwright browser installation failed with exit code: $LASTEXITCODE"
@@ -218,9 +232,9 @@ function Install-PlaywrightFromRepository {
         
         Write-Host "Playwright browsers installed successfully"
         
-        # Optional: Install Playwright dependencies for specific OS
-        Write-Host "Installing Playwright system dependencies..."
-        & npx playwright install-deps
+        # Install only system dependencies for the specific browser (much faster)
+        Write-Host "Installing Playwright system dependencies for $targetBrowser..."
+        & npx playwright install-deps $targetBrowser
         
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "Playwright system dependencies installation completed with warnings (exit code: $LASTEXITCODE)"
@@ -374,19 +388,18 @@ function Run-PlaywrightTests {
             return
         }
         
-        # Build the test command
+        # Build the test command with performance optimizations
         $testCommand = "npx playwright test"
         
         # Add browser specification if provided
         if (![string]::IsNullOrWhiteSpace($Browser)) {
-            if ($Browser -eq "all") {
-                # Don't add --project flag to run all browsers
-                Write-Host "Running tests on all browsers"
-            } else {
-                $testCommand += " --project=$Browser"
-                Write-Host "Running tests on browser: $Browser"
-            }
+            $testCommand += " --project=$Browser"
+            Write-Host "Running tests on browser: $Browser"
         }
+        
+        # Force headless mode for CI/CD performance
+        $testCommand += " --headed=false"
+        Write-Host "Running in headless mode for optimal CI/CD performance"
         
         # Add trace configuration if provided
         if (![string]::IsNullOrWhiteSpace($Trace) -and $Trace -ne "off") {
@@ -398,23 +411,24 @@ function Run-PlaywrightTests {
                 Write-Host "Trace files will be saved to: test-results folder"
             }
         } else {
-            Write-Host "Trace mode: disabled"
+            Write-Host "Trace mode: disabled for faster execution"
         }
         
+        # Add performance optimizations for CI/CD
+        $testCommand += " --workers=2"  # Limit workers to prevent resource exhaustion
+        $testCommand += " --reporter=line"  # Use faster line reporter
         
         # Add test pattern if specified
         if (![string]::IsNullOrWhiteSpace($TestPattern)) {
             $testCommand += " $TestPattern"
         }
         
-        # Add reporter for better output in CI/CD
-        #$testCommand += " --reporter=list,html,json,junit"
-        
-        # Add additional flags for better debugging
+        # Add additional flags for better debugging and performance
         $testCommand += " --output=test-results" 
+        $testCommand += " --max-failures=10"  # Stop after 10 failures to save time
         
         Write-Host "Executing command: $testCommand"
-        Write-Host "Starting Playwright test execution..."
+        Write-Host "Starting Playwright test execution with performance optimizations..."
         
         # Execute the tests
         Invoke-Expression $testCommand
@@ -686,9 +700,15 @@ $o365Password = Get-VstsInput -Name 'o365Password'
 $branchName = Get-VstsInput -Name 'branchName'
 $tags = Get-VstsInput -Name 'tags'
 
-# Set environment variables for Playwright tests
+# Set environment variables for Playwright tests and performance optimizations
 Write-Host "==========================================================="
 Write-Host "Setting environment variables for Playwright tests..."
+
+# Performance optimizations for CI/CD
+$env:PLAYWRIGHT_BROWSERS_PATH = "0"  # Use system temp for browser binaries
+$env:PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "0"  # Ensure we can download browsers
+$env:CI = "true"  # Enable CI mode optimizations in Playwright
+
 if (![string]::IsNullOrWhiteSpace($appUrl)) {
     $env:APP_URL = $appUrl
     Write-Host "APP_URL environment variable set"
@@ -716,6 +736,14 @@ if (![string]::IsNullOrWhiteSpace($o365Password)) {
 } else {
     Write-Host "O365_PASSWORD not provided - skipping"
 }
+
+# Set browser preference early for optimization
+if (![string]::IsNullOrWhiteSpace($browser)) {
+    $env:PLAYWRIGHT_BROWSER = $browser
+    Write-Host "Target browser set to: $browser for optimized installation"
+}
+
+Write-Host "Performance optimizations enabled for CI/CD environment"
 Write-Host "==========================================================="
 
 # Install Node.js on the target machine
@@ -733,7 +761,7 @@ Write-Host "==========================================================="
 # Install Playwright from the cloned repository
 Write-Host "==========================================================="
 Write-Host "Installing Playwright from repository..."
-Install-PlaywrightFromRepository
+Install-PlaywrightFromRepository -TargetBrowser $browser
 Write-Host "==========================================================="
 
 # Copy tests from specified location to playwright tests folder

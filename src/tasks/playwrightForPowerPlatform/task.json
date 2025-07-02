@@ -39,15 +39,14 @@
             "name": "browser",
             "type": "pickList",
             "label": "Browser",
-            "defaultValue": "all",
+            "defaultValue": "chromium",
             "required": true,
-            "helpMarkDown": "Browser to run the Playwright tests on",
+            "helpMarkDown": "Browser to run the Playwright tests on. Each browser is installed and executed separately for optimal performance in CI/CD pipelines.",
             "groupName": "inputGroup",
             "options": {
-                "chromium": "Chromium",
+                "chromium": "Chromium (Recommended)",
                 "firefox": "Firefox",
-                "webkit": "WebKit",
-                "all": "All Browsers"
+                "webkit": "WebKit (Safari)"
             }
         },
         {
