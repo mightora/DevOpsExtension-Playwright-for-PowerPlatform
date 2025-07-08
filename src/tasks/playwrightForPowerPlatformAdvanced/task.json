@@ -1,0 +1,185 @@
+{
+    "$schema": "https://raw.githubusercontent.com/Microsoft/azure-pipelines-task-lib/master/tasks.schema.json",
+    "id": "4dbd42b0-b347-49f5-ae12-be5be9c4314d",
+    "name": "mightoria-playwrightForPowerPlatformAdvanced",
+    "friendlyName": "Playwright for Power Platform Advanced",
+    "instanceNameFormat": "Playwright for Power Platform Advanced",
+    "description": "Execute end-to-end tests on Power Platform applications using Playwright with advanced configuration options. This DevOps extension automatically sets up Playwright, installs dependencies, runs your test suite against Power Platform apps, and generates comprehensive test reports with screenshots, traces, and detailed failure analysis for CI/CD pipelines.",
+    "helpMarkDown": "See [mightora.io](https://mightora.io)",
+    "category": "Build",
+    "author": "mightoraio",
+    "version": {
+        "Major": 1,
+        "Minor": 0,
+        "Patch": 12
+    },
+    "groups": [
+        {
+            "name": "inputGroup",
+            "displayName": "Source",
+            "isExpanded": true
+        },
+        {
+            "name": "outputGroup",
+            "displayName": "Output",
+            "isExpanded": true
+        }
+    ],
+    "inputs": [
+        {
+            "name": "testLocation",
+            "type": "string",
+            "label": "Test Location",
+            "defaultValue": "$(System.DefaultWorkingDirectory)/PlaywrightTests",
+            "required": true,
+            "helpMarkDown": "Path to the folder containing Playwright tests to copy",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "browser",
+            "type": "pickList",
+            "label": "Browser",
+            "defaultValue": "chromium",
+            "required": true,
+            "helpMarkDown": "Browser to run the Playwright tests on. Each browser is installed and executed separately for optimal performance in CI/CD pipelines.",
+            "groupName": "inputGroup",
+            "options": {
+                "chromium": "Chromium (Recommended)",
+                "firefox": "Firefox",
+                "webkit": "WebKit (Safari)"
+            }
+        },
+        {
+            "name": "trace",
+            "type": "pickList",
+            "label": "Trace Mode",
+            "defaultValue": "off",
+            "required": true,
+            "helpMarkDown": "Enable tracing for debugging test failures. Traces capture screenshots, DOM snapshots, and network activity",
+            "groupName": "inputGroup",
+            "options": {
+                "off": "Off",
+                "on": "On",
+                "retain-on-failure": "Only on Failure",
+                "on-first-retry": "On First Retry"
+            }
+        },
+        {
+            "name": "outputLocation",
+            "type": "string",
+            "label": "Output Location",
+            "defaultValue": "$(System.DefaultWorkingDirectory)",
+            "required": true,
+            "helpMarkDown": "Directory where test results and reports will be copied. test-results and playwright-report folders will be created here",
+            "groupName": "outputGroup"
+        },
+        {
+            "name": "appUrl",
+            "type": "string",
+            "label": "Application URL",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "The URL of the Power Platform application to test",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "appName",
+            "type": "string",
+            "label": "Application Name",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "The name of the Power Platform application",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "o365Username",
+            "type": "string",
+            "label": "O365 Username",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Office 365 username for authentication",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "o365Password",
+            "type": "string",
+            "label": "O365 Password",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Office 365 password for authentication (use Azure DevOps secret variable)",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "tenantId",
+            "type": "string",
+            "label": "Tenant ID",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Azure Active Directory Tenant ID for the Power Platform application",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "dynamicsUrl",
+            "type": "string",
+            "label": "Dynamics URL",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "The Dynamics 365 environment URL (e.g., https://yourorg.crm.dynamics.com)",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "clientId",
+            "type": "string",
+            "label": "Client ID",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Azure AD Application (Client) ID for authentication",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "clientSecret",
+            "type": "string",
+            "label": "Client Secret",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Azure AD Application Client Secret (use Azure DevOps secret variable)",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "userRole",
+            "type": "string",
+            "label": "User Role",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "The user role/security role to test with in the Power Platform application",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "team",
+            "type": "string",
+            "label": "Team",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "The team context for the user in the Power Platform application",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "businessUnit",
+            "type": "string",
+            "label": "Business Unit",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "The business unit context for the user in the Power Platform application",
+            "groupName": "inputGroup"
+        }
+    ],
+    "execution": {
+        "PowerShell3": {
+            "target": "powershell.ps1",
+            "platforms": [
+                "windows"
+            ],
+            "workingDirectory": "$(currentDirectory)"
+        }
+    }
+}

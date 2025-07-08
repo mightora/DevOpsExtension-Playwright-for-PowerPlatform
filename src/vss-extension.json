@@ -83,6 +83,10 @@
         {
             "path": "tasks/playwrightForPowerPlatform",
             "packagePath": "playwrightForPowerPlatform"
+        },
+        {
+            "path": "tasks/playwrightForPowerPlatformAdvanced",
+            "packagePath": "playwrightForPowerPlatformAdvanced"
         }
     ],
     "contributions": [
@@ -95,6 +99,17 @@
             "properties": {
                 "name": "playwrightForPowerPlatform",
                 "friendlyName": "Playwright for Power Platform"
+            }
+        },
+        {
+            "id": "mightoria-playwrightForPowerPlatformAdvanced",
+            "type": "ms.vss-distributed-task.task",
+            "targets": [
+                "ms.vss-distributed-task.tasks"
+            ],
+            "properties": {
+                "name": "playwrightForPowerPlatformAdvanced",
+                "friendlyName": "Playwright for Power Platform Advanced"
             }
         }
     ]
