@@ -101,7 +101,15 @@ function Get-PowerPlatformAccessToken {
         
         # Prepare token request
         $tokenUrl = "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token"
-        $scope = "$DynamicsUrl/.default"
+        
+        # Ensure the Dynamics URL is properly formatted for the scope
+        $formattedDynamicsUrl = $DynamicsUrl
+        if ($formattedDynamicsUrl -notmatch "^https://") {
+            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
+        }
+        # Remove trailing slash if present
+        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
+        $scope = "$formattedDynamicsUrl/.default"
         
         $body = @{
             grant_type    = "client_credentials"
@@ -112,6 +120,7 @@ function Get-PowerPlatformAccessToken {
         
         Write-Host "Requesting access token from Azure AD..."
         Write-Host "Token URL: $tokenUrl"
+        Write-Host "Formatted Dynamics URL: $formattedDynamicsUrl"
         Write-Host "Scope: $scope"
         
         # Make the token request
@@ -128,12 +137,52 @@ function Get-PowerPlatformAccessToken {
         
     } catch {
         Write-Error "Failed to obtain access token: $($_.Exception.Message)"
+        
+        # Enhanced error reporting for OAuth issues
         if ($_.Exception.Response) {
-            $errorResponse = $_.Exception.Response.GetResponseStream()
-            $reader = New-Object System.IO.StreamReader($errorResponse)
-            $errorBody = $reader.ReadToEnd()
-            Write-Error "Error response: $errorBody"
+            $statusCode = $_.Exception.Response.StatusCode
+            $statusDescription = $_.Exception.Response.StatusDescription
+            Write-Error "HTTP Status: $statusCode - $statusDescription"
+            
+            try {
+                $errorResponse = $_.Exception.Response.GetResponseStream()
+                $reader = New-Object System.IO.StreamReader($errorResponse)
+                $errorBody = $reader.ReadToEnd()
+                Write-Error "Error response body: $errorBody"
+                
+                # Try to parse the error for common OAuth issues
+                if ($errorBody -like "*invalid_scope*") {
+                    Write-Error "TROUBLESHOOTING: Invalid scope error detected. Please verify:"
+                    Write-Error "1. The Dynamics URL is correct and accessible"
+                    Write-Error "2. The service principal has been granted permissions to Dynamics 365"
+                    Write-Error "3. Admin consent has been provided for the required permissions"
+                }
+                elseif ($errorBody -like "*invalid_client*") {
+                    Write-Error "TROUBLESHOOTING: Invalid client error detected. Please verify:"
+                    Write-Error "1. The Client ID is correct"
+                    Write-Error "2. The Client Secret is valid and not expired"
+                    Write-Error "3. The service principal exists in the tenant"
+                }
+                elseif ($errorBody -like "*invalid_request*") {
+                    Write-Error "TROUBLESHOOTING: Invalid request error detected. Please verify:"
+                    Write-Error "1. All required parameters are provided"
+                    Write-Error "2. The Tenant ID is correct"
+                    Write-Error "3. The request format matches OAuth 2.0 client credentials flow"
+                }
+                
+            } catch {
+                Write-Warning "Could not read error response details: $($_.Exception.Message)"
+            }
         }
+        
+        # Additional troubleshooting information
+        Write-Error "CONFIGURATION VERIFICATION:"
+        Write-Error "- Tenant ID: $TenantId"
+        Write-Error "- Client ID: $ClientId"
+        Write-Error "- Dynamics URL: $formattedDynamicsUrl"
+        Write-Error "- Token URL: $tokenUrl"
+        Write-Error "- Scope: $scope"
+        
         throw
     }
 }
