@@ -1,6 +1,6 @@
 {
     "$schema": "https://raw.githubusercontent.com/Microsoft/azure-pipelines-task-lib/master/tasks.schema.json",
-    "id": "579190ac-ccd4-4451-a298-a6150001cf1a",
+    "id": "579190ac-ccd4-4451-a288-a6150001cf1a",
     "name": "mightoria-playwrightForPowerPlatform",
     "friendlyName": "Playwright for Power Platform",
     "instanceNameFormat": "Playwright for Power Platform",
