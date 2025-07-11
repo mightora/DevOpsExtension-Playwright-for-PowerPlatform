@@ -1,8 +1,8 @@
 {
     "manifestVersion": 1,
     "id": "dev-mightora-playwright-for-power-platform",
-    "name": "DEV 1.0.24 - Playwright for Power Platform",
-    "version": "1.0.24",
+    "name": "DEV 1.0.46 - Playwright for Power Platform",
+    "version": "1.0.46",
     "publisher": "mightoraio",
     "targets": [
         {
@@ -52,6 +52,10 @@
         {
             "path": "tasks/playwrightForPowerPlatform",
             "packagePath": "playwrightForPowerPlatform"
+        },
+        {
+            "path": "tasks/playwrightForPowerPlatformAdvanced",
+            "packagePath": "playwrightForPowerPlatformAdvanced"
         }
     ],
     "contributions": [
@@ -64,6 +68,17 @@
             "properties": {
                 "name": "playwrightForPowerPlatform",
                 "friendlyName": "Playwright for Power Platform"
+             }
+        },
+        {
+            "id": "mightoria-playwrightForPowerPlatformAdvanced",
+            "type": "ms.vss-distributed-task.task",
+            "targets": [
+                "ms.vss-distributed-task.tasks"
+            ],
+            "properties": {
+                "name": "playwrightForPowerPlatformAdvanced",
+                "friendlyName": "Playwright for Power Platform Advanced"
              }
         }
     ]

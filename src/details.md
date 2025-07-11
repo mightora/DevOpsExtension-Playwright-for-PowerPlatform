@@ -89,6 +89,16 @@ Multiple report formats ensure compatibility with your workflow:
 - No credential storage in logs or artifacts
 - Support for multi-factor authentication scenarios
 
+## Advanced Task Capabilities
+
+The advanced version of the Playwright for Power Platform task includes additional features for managing user roles, teams, and business units within the Power Platform environment. These capabilities enable:
+
+- **User Role Management**: Assign and remove security roles for users dynamically during test execution.
+- **Team Assignment**: Add users to specific teams to test team-based workflows and permissions.
+- **Business Unit Configuration**: Update user business units to validate access and functionality across organizational structures.
+
+These features are designed to streamline testing for enterprise-level Power Platform applications, ensuring that user-specific configurations are handled seamlessly within CI/CD pipelines.
+
 ## Setup & Configuration
 
 ### Prerequisites
