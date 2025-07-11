@@ -748,6 +748,22 @@ function Remove-UserFromTeam {
         
     } catch {
         Write-Warning "Failed to remove user from team: $($_.Exception.Message)"
+        
+        # Enhanced error reporting for team removal
+        if ($_.Exception.Response) {
+            $statusCode = $_.Exception.Response.StatusCode
+            $statusDescription = $_.Exception.Response.StatusDescription
+            Write-Error "HTTP Status: $statusCode - $statusDescription"
+            
+            try {
+                $errorResponse = $_.Exception.Response.GetResponseStream()
+                $reader = New-Object System.IO.StreamReader($errorResponse)
+                $errorBody = $reader.ReadToEnd()
+                Write-Error "Error response body: $errorBody"
+            } catch {
+                Write-Warning "Could not read error response details: $($_.Exception.Message)"
+            }
+        }
     }
 }
 
