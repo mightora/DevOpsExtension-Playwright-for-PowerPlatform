@@ -597,44 +597,6 @@ function Add-UserSecurityRole {
         
     } catch {
         Write-Error "Failed to assign security role: $($_.Exception.Message)"
-        
-        # Enhanced error reporting for security role assignment
-        if ($_.Exception.Response) {
-            $statusCode = $_.Exception.Response.StatusCode
-            $statusDescription = $_.Exception.Response.StatusDescription
-            Write-Error "HTTP Status: $statusCode - $statusDescription"
-            
-            try {
-                $errorResponse = $_.Exception.Response.GetResponseStream()
-                $reader = New-Object System.IO.StreamReader($errorResponse)
-                $errorBody = $reader.ReadToEnd()
-                Write-Error "Error response body: $errorBody"
-                
-                # Specific troubleshooting for role assignment issues
-                if ($errorBody -like "*duplicate*" -or $errorBody -like "*already*") {
-                    Write-Error "TROUBLESHOOTING: The user may already have this role assigned."
-                }
-                elseif ($errorBody -like "*permission*" -or $errorBody -like "*privilege*") {
-                    Write-Error "TROUBLESHOOTING: The service principal may not have sufficient permissions to assign security roles."
-                }
-                elseif ($errorBody -like "*invalid*") {
-                    Write-Error "TROUBLESHOOTING: The role ID or user ID may be invalid."
-                    Write-Error "Role ID: $RoleId"
-                    Write-Error "User ID: $UserId"
-                }
-                
-            } catch {
-                Write-Warning "Could not read error response details: $($_.Exception.Message)"
-            }
-        }
-        
-        # Log the request details for debugging
-        Write-Error "REQUEST DETAILS:"
-        Write-Error "- URL: $associateUrl"
-        Write-Error "- Body: $body"
-        Write-Error "- Role ID: $RoleId"
-        Write-Error "- User ID: $UserId"
-        
         throw
     }
 }
@@ -1604,13 +1566,8 @@ if (![string]::IsNullOrWhiteSpace($tenantId) -and
         # Step 5: Configure user assignments if specified
         if (![string]::IsNullOrWhiteSpace($userRole)) {
             Write-Host "Configuring security role assignment..."
-            try {
-                $roleId = Get-PowerPlatformRoleId -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -RoleName $userRole
-                Add-UserSecurityRole -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -UserId $userId -RoleId $roleId
-            } catch {
-                # The detailed error information has already been logged by Add-UserSecurityRole
-                throw "Security role assignment failed. See detailed error information above."
-            }
+            $roleId = Get-PowerPlatformRoleId -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -RoleName $userRole
+            Add-UserSecurityRole -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -UserId $userId -RoleId $roleId
         }
         
         if (![string]::IsNullOrWhiteSpace($businessUnit)) {
@@ -1719,8 +1676,16 @@ try {
                 }
             }
             
-            # Skip team and business unit removal during cleanup to preserve user access
-            Write-Host "Skipping team and business unit removal to preserve user access"
+            # Remove from team if it was assigned
+            if (![string]::IsNullOrWhiteSpace($team) -and $teamId) {
+                Write-Host "Removing user from team..."
+                Remove-UserFromTeam -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -UserId $userId -TeamId $teamId
+            }
+            
+            # Note: Business unit changes are typically not reverted in cleanup as they may affect user's core access
+            if (![string]::IsNullOrWhiteSpace($businessUnit)) {
+                Write-Host "Note: Business unit assignment cleanup skipped to preserve user access"
+            }
             
             Write-Host "Power Platform cleanup completed!" -ForegroundColor Green
             
@@ -1755,4 +1720,3 @@ if ($testResults -ne 0) {
     Write-Host "Task completed successfully!" -ForegroundColor Green
     exit 0
 }
-
