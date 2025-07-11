@@ -670,13 +670,14 @@ function Add-UserToTeam {
             "Content-Type" = "application/json"
         }
         
-        # Associate user with team
-        $associateUrl = "$formattedDynamicsUrl/api/data/v9.2/teams($TeamId)/teammembership_association/`$ref"
+        # Add user to team using the Dataverse Action API for reliability
+        $addToTeamUrl = "$formattedDynamicsUrl/api/data/v9.2/AddUserToTeam"
         $body = @{
-            "@odata.id" = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)"
+            "TeamId" = $TeamId
+            "SystemUserId" = $UserId
         } | ConvertTo-Json
         
-        Invoke-RestMethod -Uri $associateUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
+        Invoke-RestMethod -Uri $addToTeamUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
         Write-Host "Successfully added user to team" -ForegroundColor Green
         
     } catch {
@@ -711,9 +712,15 @@ function Remove-UserFromTeam {
             "Accept" = "application/json"
         }
         
-        # Remove user from team
-        $removeUrl = "$formattedDynamicsUrl/api/data/v9.2/teams($TeamId)/teammembership_association/$UserId/`$ref"
-        Invoke-RestMethod -Uri $removeUrl -Method DELETE -Headers $headers -ErrorAction Stop
+        # Remove user from team using the correct Dataverse API format
+        $removeUrl = "$formattedDynamicsUrl/api/data/v9.2/RemoveUserFromTeam"
+        $body = @{
+            "TeamId" = $TeamId
+            "SystemUserId" = $UserId
+        } | ConvertTo-Json
+        
+        $headers["Content-Type"] = "application/json"
+        Invoke-RestMethod -Uri $removeUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
         Write-Host "Successfully removed user from team" -ForegroundColor Green
         
     } catch {
@@ -1600,6 +1607,13 @@ try {
             if (![string]::IsNullOrWhiteSpace($userRole) -and $roleId) {
                 Write-Host "Removing assigned security role..."
                 try {
+                    # Ensure the Dynamics URL is properly formatted
+                    $formattedDynamicsUrl = $dynamicsUrl
+                    if ($formattedDynamicsUrl -notmatch "^https://") {
+                        $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
+                    }
+                    $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
+                    
                     $headers = @{
                         "Authorization" = "Bearer $accessToken"
                         "OData-MaxVersion" = "4.0"
@@ -1607,7 +1621,7 @@ try {
                         "Accept" = "application/json"
                     }
                     
-                    $removeRoleUrl = "$dynamicsUrl/api/data/v9.2/systemusers($userId)/systemuserroles_association/$roleId/`$ref"
+                    $removeRoleUrl = "$formattedDynamicsUrl/api/data/v9.2/systemusers($userId)/systemuserroles_association/$roleId/`$ref"
                     Invoke-RestMethod -Uri $removeRoleUrl -Method DELETE -Headers $headers -ErrorAction Stop
                     Write-Host "Successfully removed security role: $userRole" -ForegroundColor Green
                 } catch {
