@@ -398,6 +398,13 @@ function Get-PowerPlatformTeamId {
     Write-Host "Getting team ID for team: $TeamName"
     
     try {
+        # Ensure the Dynamics URL is properly formatted
+        $formattedDynamicsUrl = $DynamicsUrl
+        if ($formattedDynamicsUrl -notmatch "^https://") {
+            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
+        }
+        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
+        
         $headers = @{
             "Authorization" = "Bearer $AccessToken"
             "OData-MaxVersion" = "4.0"
@@ -406,7 +413,7 @@ function Get-PowerPlatformTeamId {
         }
         
         # Query for team by name
-        $teamQuery = "$DynamicsUrl/api/data/v9.2/teams?`$filter=name eq '$TeamName'"
+        $teamQuery = "$formattedDynamicsUrl/api/data/v9.2/teams?`$filter=name eq '$TeamName'"
         Write-Host "Querying team: $teamQuery"
         
         $response = Invoke-RestMethod -Uri $teamQuery -Method GET -Headers $headers -ErrorAction Stop
@@ -421,6 +428,15 @@ function Get-PowerPlatformTeamId {
         
     } catch {
         Write-Error "Failed to get team ID: $($_.Exception.Message)"
+        
+        # Enhanced error reporting for API access issues
+        if ($_.Exception.Response) {
+            $statusCode = $_.Exception.Response.StatusCode
+            if ($statusCode -eq 401) {
+                Write-Error "TROUBLESHOOTING: Authentication failed when accessing teams. The service principal may not have sufficient permissions."
+            }
+        }
+        
         throw
     }
 }
@@ -436,6 +452,13 @@ function Get-PowerPlatformBusinessUnitId {
     Write-Host "Getting business unit ID for: $BusinessUnitName"
     
     try {
+        # Ensure the Dynamics URL is properly formatted
+        $formattedDynamicsUrl = $DynamicsUrl
+        if ($formattedDynamicsUrl -notmatch "^https://") {
+            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
+        }
+        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
+        
         $headers = @{
             "Authorization" = "Bearer $AccessToken"
             "OData-MaxVersion" = "4.0"
@@ -444,7 +467,7 @@ function Get-PowerPlatformBusinessUnitId {
         }
         
         # Query for business unit by name
-        $buQuery = "$DynamicsUrl/api/data/v9.2/businessunits?`$filter=name eq '$BusinessUnitName'"
+        $buQuery = "$formattedDynamicsUrl/api/data/v9.2/businessunits?`$filter=name eq '$BusinessUnitName'"
         Write-Host "Querying business unit: $buQuery"
         
         $response = Invoke-RestMethod -Uri $buQuery -Method GET -Headers $headers -ErrorAction Stop
@@ -459,6 +482,31 @@ function Get-PowerPlatformBusinessUnitId {
         
     } catch {
         Write-Error "Failed to get business unit ID: $($_.Exception.Message)"
+        
+        # Enhanced error reporting for API access issues
+        if ($_.Exception.Response) {
+            $statusCode = $_.Exception.Response.StatusCode
+            $statusDescription = $_.Exception.Response.StatusDescription
+            Write-Error "HTTP Status: $statusCode - $statusDescription"
+            
+            if ($statusCode -eq 401) {
+                Write-Error "TROUBLESHOOTING: Authentication failed when accessing business units. Please verify:"
+                Write-Error "1. The service principal has read access to businessunit entity"
+                Write-Error "2. The access token is valid and not expired"
+                Write-Error "3. The service principal has appropriate permissions in Power Platform"
+                Write-Error "4. The Dynamics URL is correct: $formattedDynamicsUrl"
+            }
+            
+            try {
+                $errorResponse = $_.Exception.Response.GetResponseStream()
+                $reader = New-Object System.IO.StreamReader($errorResponse)
+                $errorBody = $reader.ReadToEnd()
+                Write-Error "Error response body: $errorBody"
+            } catch {
+                Write-Warning "Could not read error response details: $($_.Exception.Message)"
+            }
+        }
+        
         throw
     }
 }
@@ -876,6 +924,13 @@ function Update-UserBusinessUnit {
     Write-Host "Updating user business unit..."
     
     try {
+        # Ensure the Dynamics URL is properly formatted
+        $formattedDynamicsUrl = $DynamicsUrl
+        if ($formattedDynamicsUrl -notmatch "^https://") {
+            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
+        }
+        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
+        
         $headers = @{
             "Authorization" = "Bearer $AccessToken"
             "OData-MaxVersion" = "4.0"
@@ -885,16 +940,49 @@ function Update-UserBusinessUnit {
         }
         
         # Update user's business unit
-        $updateUrl = "$DynamicsUrl/api/data/v9.2/systemusers($UserId)"
+        $updateUrl = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)"
         $body = @{
             "businessunitid@odata.bind" = "/businessunits($BusinessUnitId)"
         } | ConvertTo-Json
+        
+        Write-Host "PATCH URL: $updateUrl"
+        Write-Host "Request Body: $body"
         
         Invoke-RestMethod -Uri $updateUrl -Method PATCH -Headers $headers -Body $body -ErrorAction Stop
         Write-Host "Successfully updated user business unit" -ForegroundColor Green
         
     } catch {
         Write-Error "Failed to update business unit: $($_.Exception.Message)"
+        
+        # Enhanced error reporting
+        if ($_.Exception.Response) {
+            $statusCode = $_.Exception.Response.StatusCode.value__
+            $statusDescription = $_.Exception.Response.StatusDescription
+            Write-Error "HTTP Status: $statusCode - $statusDescription"
+            
+            if ($statusCode -eq 400) {
+                Write-Error "TROUBLESHOOTING: Bad Request (400) - Common causes:"
+                Write-Error "1. Invalid User ID: $UserId"
+                Write-Error "2. Invalid Business Unit ID: $BusinessUnitId"
+                Write-Error "3. The user cannot be moved to this business unit"
+                Write-Error "4. Business unit change restrictions in place"
+            }
+            elseif ($statusCode -eq 403) {
+                Write-Error "TROUBLESHOOTING: Forbidden (403) - Permission denied"
+                Write-Error "1. Service principal needs permission to modify user business units"
+                Write-Error "2. Check if the service principal has System Administrator role"
+            }
+            
+            try {
+                $errorStream = $_.Exception.Response.GetResponseStream()
+                $reader = New-Object System.IO.StreamReader($errorStream)
+                $errorBody = $reader.ReadToEnd()
+                Write-Error "Error response body: $errorBody"
+            } catch {
+                Write-Warning "Could not read detailed error response: $($_.Exception.Message)"
+            }
+        }
+        
         throw
     }
 }
@@ -911,6 +999,13 @@ function Add-UserToTeam {
     Write-Host "Adding user to team..."
     
     try {
+        # Ensure the Dynamics URL is properly formatted
+        $formattedDynamicsUrl = $DynamicsUrl
+        if ($formattedDynamicsUrl -notmatch "^https://") {
+            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
+        }
+        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
+        
         $headers = @{
             "Authorization" = "Bearer $AccessToken"
             "OData-MaxVersion" = "4.0"
@@ -920,16 +1015,31 @@ function Add-UserToTeam {
         }
         
         # Associate user with team
-        $associateUrl = "$DynamicsUrl/api/data/v9.2/teams($TeamId)/teammembership_association/`$ref"
+        $associateUrl = "$formattedDynamicsUrl/api/data/v9.2/teams($TeamId)/teammembership_association/`$ref"
         $body = @{
-            "@odata.id" = "$DynamicsUrl/api/data/v9.2/systemusers($UserId)"
+            "@odata.id" = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)"
         } | ConvertTo-Json
+        
+        Write-Host "POST URL: $associateUrl"
+        Write-Host "Request Body: $body"
         
         Invoke-RestMethod -Uri $associateUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
         Write-Host "Successfully added user to team" -ForegroundColor Green
         
     } catch {
         Write-Error "Failed to add user to team: $($_.Exception.Message)"
+        
+        # Enhanced error reporting
+        if ($_.Exception.Response) {
+            $statusCode = $_.Exception.Response.StatusCode.value__
+            if ($statusCode -eq 400) {
+                Write-Error "TROUBLESHOOTING: Bad Request (400) - User may already be in team or invalid IDs"
+            }
+            elseif ($statusCode -eq 403) {
+                Write-Error "TROUBLESHOOTING: Forbidden (403) - Service principal lacks team management permissions"
+            }
+        }
+        
         throw
     }
 }
@@ -946,6 +1056,13 @@ function Remove-UserFromTeam {
     Write-Host "Removing user from team..."
     
     try {
+        # Ensure the Dynamics URL is properly formatted
+        $formattedDynamicsUrl = $DynamicsUrl
+        if ($formattedDynamicsUrl -notmatch "^https://") {
+            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
+        }
+        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
+        
         $headers = @{
             "Authorization" = "Bearer $AccessToken"
             "OData-MaxVersion" = "4.0"
@@ -954,12 +1071,22 @@ function Remove-UserFromTeam {
         }
         
         # Remove user from team
-        $removeUrl = "$DynamicsUrl/api/data/v9.2/teams($TeamId)/teammembership_association/$UserId/`$ref"
+        $removeUrl = "$formattedDynamicsUrl/api/data/v9.2/teams($TeamId)/teammembership_association/$UserId/`$ref"
+        Write-Host "DELETE URL: $removeUrl"
+        
         Invoke-RestMethod -Uri $removeUrl -Method DELETE -Headers $headers -ErrorAction Stop
         Write-Host "Successfully removed user from team" -ForegroundColor Green
         
     } catch {
         Write-Warning "Failed to remove user from team: $($_.Exception.Message)"
+        
+        # Don't throw for cleanup operations - log warning and continue
+        if ($_.Exception.Response) {
+            $statusCode = $_.Exception.Response.StatusCode.value__
+            if ($statusCode -eq 404) {
+                Write-Host "User was not in team (404 Not Found) - no action needed" -ForegroundColor Yellow
+            }
+        }
     }
 }
 
