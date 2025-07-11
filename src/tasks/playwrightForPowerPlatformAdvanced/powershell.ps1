@@ -1,13 +1,14 @@
 <#
     ===========================================================
-    Task: Mightora Commit To Git Repository
+    Task: Mightora Playwright for Power Platform Advanced
     
-    Originally Created By: Ian Tweedie [https://iantweedie.biz] (Date: 2024-10-08)
-    Date: 2024-10-08
+    Originally Created By: Ian Tweedie [https://iantweedie.biz] (Date: 2025-05-25)
+    Enhanced with Power Platform User Management (Date: 2025-07-08)
 
     Contributors:
-    - Developer A (Contributions: Improved Git configuration handling)
-    - Developer B (Contributions: Added support for custom commit messages)
+    - Enhanced user role, team, and business unit management
+    - Added secure handling of sensitive authentication data
+    - Implemented comprehensive cleanup procedures
     
     ===========================================================
 #>
@@ -16,8 +17,15 @@
 
 param()
 
-# Import the VSTS Task SDK
-Import-Module $PSScriptRoot\ps_modules\VstsTaskSdk\VstsTaskSdk.psd1
+# Import the VSTS Task SDK with error handling
+try {
+    Import-Module $PSScriptRoot\ps_modules\VstsTaskSdk\VstsTaskSdk.psd1 -ErrorAction Stop
+    Write-Host "VSTS Task SDK imported successfully"
+} catch {
+    Write-Error "Failed to import VSTS Task SDK: $($_.Exception.Message)"
+    Write-Error "Ensure the ps_modules\VstsTaskSdk directory exists in: $PSScriptRoot"
+    exit 1
+}
 
 # Helper function to safely create directories
 function New-DirectoryIfNotExists {
@@ -525,7 +533,7 @@ function Remove-AllUserSecurityRoles {
     }
 }
 
-# Assign security role to user
+# Assign security role to user - FIXED VERSION
 function Add-UserSecurityRole {
     param(
         [string]$DynamicsUrl,
@@ -552,17 +560,137 @@ function Add-UserSecurityRole {
             "Content-Type" = "application/json"
         }
         
-        # Associate role with user
-        $associateUrl = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)/systemuserroles_association/`$ref"
-        $body = @{
-            "@odata.id" = "$formattedDynamicsUrl/api/data/v9.2/roles($RoleId)"
-        } | ConvertTo-Json
+        # Method 1: Try the systemuserroles_association endpoint (most common)
+        try {
+            Write-Host "Attempting role assignment using systemuserroles_association..."
+            $associateUrl = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)/systemuserroles_association/`$ref"
+            $body = @{
+                "@odata.id" = "$formattedDynamicsUrl/api/data/v9.2/roles($RoleId)"
+            } | ConvertTo-Json
+            
+            Write-Host "POST URL: $associateUrl"
+            Write-Host "Request Body: $body"
+            
+            Invoke-RestMethod -Uri $associateUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
+            Write-Host "Successfully assigned security role using systemuserroles_association" -ForegroundColor Green
+            return
+        }
+        catch {
+            Write-Warning "Method 1 failed: $($_.Exception.Message)"
+            
+            # Check if it's a duplicate role error (which might be acceptable)
+            if ($_.Exception.Message -like "*duplicate*" -or $_.Exception.Message -like "*already exists*") {
+                Write-Host "Role may already be assigned. Checking current assignments..." -ForegroundColor Yellow
+                
+                # Verify the role is actually assigned
+                $checkUrl = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)/systemuserroles_association"
+                $currentRoles = Invoke-RestMethod -Uri $checkUrl -Method GET -Headers $headers -ErrorAction SilentlyContinue
+                
+                $roleAlreadyAssigned = $currentRoles.value | Where-Object { $_.roleid -eq $RoleId }
+                if ($roleAlreadyAssigned) {
+                    Write-Host "Role is already assigned to user - no action needed" -ForegroundColor Green
+                    return
+                }
+            }
+        }
         
-        Invoke-RestMethod -Uri $associateUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
-        Write-Host "Successfully assigned security role to user" -ForegroundColor Green
+        # Method 2: Try using the roles endpoint to associate the user
+        try {
+            Write-Host "Attempting role assignment using roles endpoint..."
+            $associateUrl2 = "$formattedDynamicsUrl/api/data/v9.2/roles($RoleId)/systemuserroles_association/`$ref"
+            $body2 = @{
+                "@odata.id" = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)"
+            } | ConvertTo-Json
+            
+            Write-Host "POST URL: $associateUrl2"
+            Write-Host "Request Body: $body2"
+            
+            Invoke-RestMethod -Uri $associateUrl2 -Method POST -Headers $headers -Body $body2 -ErrorAction Stop
+            Write-Host "Successfully assigned security role using roles endpoint" -ForegroundColor Green
+            return
+        }
+        catch {
+            Write-Warning "Method 2 failed: $($_.Exception.Message)"
+        }
+        
+        # Method 3: Try using the Associate action (alternative approach)
+        try {
+            Write-Host "Attempting role assignment using Associate action..."
+            $associateActionUrl = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)/Microsoft.Dynamics.CRM.Associate"
+            $associateBody = @{
+                target = @{
+                    "@odata.id" = "$formattedDynamicsUrl/api/data/v9.2/roles($RoleId)"
+                }
+                relationship = "systemuserroles_association"
+            } | ConvertTo-Json -Depth 3
+            
+            Write-Host "POST URL: $associateActionUrl"
+            Write-Host "Request Body: $associateBody"
+            
+            Invoke-RestMethod -Uri $associateActionUrl -Method POST -Headers $headers -Body $associateBody -ErrorAction Stop
+            Write-Host "Successfully assigned security role using Associate action" -ForegroundColor Green
+            return
+        }
+        catch {
+            Write-Warning "Method 3 failed: $($_.Exception.Message)"
+        }
+        
+        # If all methods fail, throw a comprehensive error
+        throw "All role assignment methods failed. Please check service principal permissions and role configuration."
         
     } catch {
         Write-Error "Failed to assign security role: $($_.Exception.Message)"
+        
+        # Enhanced error reporting
+        if ($_.Exception.Response) {
+            $statusCode = $_.Exception.Response.StatusCode.value__
+            $statusDescription = $_.Exception.Response.StatusDescription
+            Write-Error "HTTP Status: $statusCode - $statusDescription"
+            
+            try {
+                $errorStream = $_.Exception.Response.GetResponseStream()
+                $reader = New-Object System.IO.StreamReader($errorStream)
+                $errorBody = $reader.ReadToEnd()
+                Write-Error "Error response body: $errorBody"
+                
+                # Parse common Power Platform errors
+                if ($errorBody -like "*insufficient privileges*") {
+                    Write-Error "TROUBLESHOOTING: The service principal lacks sufficient privileges to assign security roles."
+                    Write-Error "Required fixes:"
+                    Write-Error "1. Ensure the service principal has 'System Administrator' role or equivalent"
+                    Write-Error "2. Verify the service principal can manage user security roles"
+                    Write-Error "3. Check if the target role can be assigned by the service principal"
+                }
+                elseif ($errorBody -like "*SecurityRole*" -or $errorBody -like "*privilege*") {
+                    Write-Error "TROUBLESHOOTING: Security role assignment privilege issue detected."
+                    Write-Error "The service principal may not have permission to assign the '$userRole' role."
+                }
+                elseif ($statusCode -eq 400) {
+                    Write-Error "TROUBLESHOOTING: Bad Request (400) - Common causes:"
+                    Write-Error "1. Invalid User ID: $UserId"
+                    Write-Error "2. Invalid Role ID: $RoleId" 
+                    Write-Error "3. Malformed request URL or body"
+                    Write-Error "4. The role cannot be assigned to this user type"
+                    Write-Error "5. Business unit mismatch between user and role"
+                }
+            } catch {
+                Write-Warning "Could not read detailed error response: $($_.Exception.Message)"
+            }
+        }
+        
+        # Additional troubleshooting information
+        Write-Error "CONFIGURATION DETAILS:"
+        Write-Error "- User ID: $UserId"
+        Write-Error "- Role ID: $RoleId"
+        Write-Error "- Dynamics URL: $formattedDynamicsUrl"
+        Write-Error "- Service Principal Client ID: $env:CLIENT_ID"
+        
+        Write-Error "VERIFICATION STEPS:"
+        Write-Error "1. Verify the service principal has System Administrator role in Power Platform"
+        Write-Error "2. Check that the role '$userRole' exists and is active"
+        Write-Error "3. Ensure the user and role are in compatible business units"
+        Write-Error "4. Confirm the service principal can read/write systemuserroles entity"
+        
         throw
     }
 }
@@ -666,7 +794,7 @@ function Remove-UserFromTeam {
     }
 }
 
-# Install Node.js on the target machine
+# Install Node.js on the target machine - Linux compatible version
 function Install-NodeJS {
     param(
         [string]$NodeVersion = "20.11.1"  # Default to LTS version
@@ -685,57 +813,88 @@ function Install-NodeJS {
         Write-Host "Node.js not found. Proceeding with installation..."
     }
     
-    Write-Host "Installing Node.js version $NodeVersion..."
-    
-    # Determine the architecture
-    $arch = if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x86" }
-    
-    # Download URL for Node.js Windows installer
-    $nodeUrl = "https://nodejs.org/dist/v$NodeVersion/node-v$NodeVersion-win-$arch.zip"
-    $downloadPath = "$env:TEMP\node-v$NodeVersion-win-$arch.zip"
-    $extractPath = "$env:TEMP\node-v$NodeVersion-win-$arch"
-    $installPath = "$env:ProgramFiles\nodejs"
-    
-    try {
-        # Download Node.js
-        Write-Host "Downloading Node.js from: $nodeUrl"
-        Invoke-WebRequest -Uri $nodeUrl -OutFile $downloadPath -UseBasicParsing
-        
-        # Extract the ZIP file
-        Write-Host "Extracting Node.js to: $extractPath"
-        Expand-Archive -Path $downloadPath -DestinationPath $env:TEMP -Force
-        
-        # Create installation directory if it doesn't exist
-        if (!(Test-Path $installPath)) {
-            New-Item -Path $installPath -ItemType Directory -Force | Out-Null
+    # Check if running on Linux (since you mentioned Linux machine)
+    if ($IsLinux -or $env:OS -notlike "*Windows*") {
+        Write-Host "Installing Node.js on Linux using package manager..."
+        try {
+            # Try different package managers
+            if (Get-Command apt-get -ErrorAction SilentlyContinue) {
+                Write-Host "Using apt-get to install Node.js..."
+                & sudo apt-get update
+                & sudo apt-get install -y nodejs npm
+            } elseif (Get-Command yum -ErrorAction SilentlyContinue) {
+                Write-Host "Using yum to install Node.js..."
+                & sudo yum install -y nodejs npm
+            } else {
+                Write-Warning "No supported package manager found. Node.js installation may fail."
+                Write-Host "Please install Node.js manually or ensure it's available in the container."
+            }
+            
+            # Verify installation
+            $installedVersion = & node --version 2>$null
+            if ($installedVersion) {
+                Write-Host "Node.js successfully installed. Version: $installedVersion"
+            } else {
+                throw "Node.js installation verification failed"
+            }
+        } catch {
+            Write-Error "Failed to install Node.js on Linux: $($_.Exception.Message)"
+            throw
         }
+    } else {
+        # Windows installation logic
+        Write-Host "Installing Node.js version $NodeVersion on Windows..."
         
-        # Copy Node.js files to installation directory
-        Write-Host "Installing Node.js to: $installPath"
-        Copy-Item -Path "$extractPath\*" -Destination $installPath -Recurse -Force
+        # Determine the architecture
+        $arch = if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x86" }
         
-        # Add Node.js to PATH for current session
-        $env:PATH = "$installPath;$env:PATH"
+        # Download URL for Node.js Windows installer
+        $nodeUrl = "https://nodejs.org/dist/v$NodeVersion/node-v$NodeVersion-win-$arch.zip"
+        $downloadPath = "$env:TEMP\node-v$NodeVersion-win-$arch.zip"
+        $extractPath = "$env:TEMP\node-v$NodeVersion-win-$arch"
+        $installPath = "$env:ProgramFiles\nodejs"
         
-        # Add Node.js to system PATH permanently
-        $currentPath = [Environment]::GetEnvironmentVariable("PATH", "Machine")
-        if ($currentPath -notlike "*$installPath*") {
-            [Environment]::SetEnvironmentVariable("PATH", "$installPath;$currentPath", "Machine")
-            Write-Host "Node.js added to system PATH"
+        try {
+            # Download Node.js
+            Write-Host "Downloading Node.js from: $nodeUrl"
+            Invoke-WebRequest -Uri $nodeUrl -OutFile $downloadPath -UseBasicParsing
+            
+            # Extract the ZIP file
+            Write-Host "Extracting Node.js to: $extractPath"
+            Expand-Archive -Path $downloadPath -DestinationPath $env:TEMP -Force
+            
+            # Create installation directory if it doesn't exist
+            if (!(Test-Path $installPath)) {
+                New-Item -Path $installPath -ItemType Directory -Force | Out-Null
+            }
+            
+            # Copy Node.js files to installation directory
+            Write-Host "Installing Node.js to: $installPath"
+            Copy-Item -Path "$extractPath\*" -Destination $installPath -Recurse -Force
+            
+            # Add Node.js to PATH for current session
+            $env:PATH = "$installPath;$env:PATH"
+            
+            # Add Node.js to system PATH permanently
+            $currentPath = [Environment]::GetEnvironmentVariable("PATH", "Machine")
+            if ($currentPath -notlike "*$installPath*") {
+                [Environment]::SetEnvironmentVariable("PATH", "$installPath;$currentPath", "Machine")
+                Write-Host "Node.js added to system PATH"
+            }
+            
+            # Verify installation
+            $installedVersion = & "$installPath\node.exe" --version
+            Write-Host "Node.js successfully installed. Version: $installedVersion"
+            Write-Host "npm version: $(& "$installPath\npm.cmd" --version)"
+            
+            # Clean up temporary files
+            Remove-Item -Path $downloadPath -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $extractPath -Recurse -Force -ErrorAction SilentlyContinue
+            
+        } catch {
+            Write-Error "Failed to install Node.js: $($_.Exception.Message)"
+            throw
         }
-        
-        # Verify installation
-        $installedVersion = & "$installPath\node.exe" --version
-        Write-Host "Node.js successfully installed. Version: $installedVersion"
-        Write-Host "npm version: $(& "$installPath\npm.cmd" --version)"
-        
-        # Clean up temporary files
-        Remove-Item -Path $downloadPath -Force -ErrorAction SilentlyContinue
-        Remove-Item -Path $extractPath -Recurse -Force -ErrorAction SilentlyContinue
-        
-    } catch {
-        Write-Error "Failed to install Node.js: $($_.Exception.Message)"
-        throw
     }
 }
 
@@ -1523,6 +1682,11 @@ try {
     Write-Host "Running Playwright tests..."
     $testResults = Run-PlaywrightTests -Browser $browser -Trace $trace
     Write-Host "==========================================================="
+    
+    # The function returns an exit code, but we should check if it's null or valid
+    if ($null -eq $testResults) {
+        $testResults = 1  # Default to failure if no result returned
+    }
 
     # Copy test results and reports to output location
     Write-Host "==========================================================="
