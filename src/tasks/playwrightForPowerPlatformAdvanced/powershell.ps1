@@ -670,15 +670,28 @@ function Add-UserToTeam {
             "Content-Type" = "application/json"
         }
         
-        # Add user to team using the Dataverse Action API for reliability
-        $addToTeamUrl = "$formattedDynamicsUrl/api/data/v9.2/AddUserToTeam"
-        $body = @{
-            "TeamId" = $TeamId
-            "SystemUserId" = $UserId
-        } | ConvertTo-Json
-        
-        Invoke-RestMethod -Uri $addToTeamUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
-        Write-Host "Successfully added user to team" -ForegroundColor Green
+        # Try to add user to team using the Dataverse Action API first, fallback to association if needed
+        try {
+            $addToTeamUrl = "$formattedDynamicsUrl/api/data/v9.2/AddUserToTeam"
+            $body = @{
+                "TeamId" = $TeamId
+                "SystemUserId" = $UserId
+            } | ConvertTo-Json
+            
+            Invoke-RestMethod -Uri $addToTeamUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
+            Write-Host "Successfully added user to team using Action API" -ForegroundColor Green
+        } catch {
+            Write-Host "Action API failed, trying association method..." -ForegroundColor Yellow
+            
+            # Fallback to association method
+            $associateUrl = "$formattedDynamicsUrl/api/data/v9.2/teams($TeamId)/teammembership_association/`$ref"
+            $body = @{
+                "@odata.id" = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)"
+            } | ConvertTo-Json
+            
+            Invoke-RestMethod -Uri $associateUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
+            Write-Host "Successfully added user to team using association method" -ForegroundColor Green
+        }
         
     } catch {
         Write-Error "Failed to add user to team: $($_.Exception.Message)"
@@ -712,16 +725,26 @@ function Remove-UserFromTeam {
             "Accept" = "application/json"
         }
         
-        # Remove user from team using the correct Dataverse API format
-        $removeUrl = "$formattedDynamicsUrl/api/data/v9.2/RemoveUserFromTeam"
-        $body = @{
-            "TeamId" = $TeamId
-            "SystemUserId" = $UserId
-        } | ConvertTo-Json
-        
-        $headers["Content-Type"] = "application/json"
-        Invoke-RestMethod -Uri $removeUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
-        Write-Host "Successfully removed user from team" -ForegroundColor Green
+        # Try to remove user from team using the Dataverse Action API first, fallback to association if needed
+        try {
+            $removeUrl = "$formattedDynamicsUrl/api/data/v9.2/RemoveUserFromTeam"
+            $body = @{
+                "TeamId" = $TeamId
+                "SystemUserId" = $UserId
+            } | ConvertTo-Json
+            
+            $headers["Content-Type"] = "application/json"
+            Invoke-RestMethod -Uri $removeUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
+            Write-Host "Successfully removed user from team using Action API" -ForegroundColor Green
+        } catch {
+            Write-Host "Action API failed, trying association method..." -ForegroundColor Yellow
+            
+            # Fallback to association method  
+            $removeUrl = "$formattedDynamicsUrl/api/data/v9.2/teams($TeamId)/teammembership_association($UserId)/`$ref"
+            $headers.Remove("Content-Type")  # Remove content-type for DELETE
+            Invoke-RestMethod -Uri $removeUrl -Method DELETE -Headers $headers -ErrorAction Stop
+            Write-Host "Successfully removed user from team using association method" -ForegroundColor Green
+        }
         
     } catch {
         Write-Warning "Failed to remove user from team: $($_.Exception.Message)"
