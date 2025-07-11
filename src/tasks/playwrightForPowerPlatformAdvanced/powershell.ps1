@@ -390,23 +390,15 @@ function Get-PowerPlatformTeamId {
     Write-Host "Getting team ID for team: $TeamName"
     
     try {
-        # Ensure the Dynamics URL is properly formatted
-        $formattedDynamicsUrl = $DynamicsUrl
-        if ($formattedDynamicsUrl -notmatch "^https://") {
-            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
-        }
-        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
-        
         $headers = @{
             "Authorization" = "Bearer $AccessToken"
             "OData-MaxVersion" = "4.0"
             "OData-Version" = "4.0"
             "Accept" = "application/json"
-            "Content-Type" = "application/json"
         }
         
         # Query for team by name
-        $teamQuery = "$formattedDynamicsUrl/api/data/v9.2/teams?`$filter=name eq '$TeamName'"
+        $teamQuery = "$DynamicsUrl/api/data/v9.2/teams?`$filter=name eq '$TeamName'"
         Write-Host "Querying team: $teamQuery"
         
         $response = Invoke-RestMethod -Uri $teamQuery -Method GET -Headers $headers -ErrorAction Stop
@@ -421,15 +413,6 @@ function Get-PowerPlatformTeamId {
         
     } catch {
         Write-Error "Failed to get team ID: $($_.Exception.Message)"
-        
-        # Enhanced error reporting for API access issues
-        if ($_.Exception.Response) {
-            $statusCode = $_.Exception.Response.StatusCode
-            if ($statusCode -eq 401) {
-                Write-Error "TROUBLESHOOTING: Authentication failed when accessing teams. The service principal may not have sufficient permissions."
-            }
-        }
-        
         throw
     }
 }
@@ -445,23 +428,15 @@ function Get-PowerPlatformBusinessUnitId {
     Write-Host "Getting business unit ID for: $BusinessUnitName"
     
     try {
-        # Ensure the Dynamics URL is properly formatted
-        $formattedDynamicsUrl = $DynamicsUrl
-        if ($formattedDynamicsUrl -notmatch "^https://") {
-            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
-        }
-        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
-        
         $headers = @{
             "Authorization" = "Bearer $AccessToken"
             "OData-MaxVersion" = "4.0"
             "OData-Version" = "4.0"
             "Accept" = "application/json"
-            "Content-Type" = "application/json"
         }
         
         # Query for business unit by name
-        $buQuery = "$formattedDynamicsUrl/api/data/v9.2/businessunits?`$filter=name eq '$BusinessUnitName'"
+        $buQuery = "$DynamicsUrl/api/data/v9.2/businessunits?`$filter=name eq '$BusinessUnitName'"
         Write-Host "Querying business unit: $buQuery"
         
         $response = Invoke-RestMethod -Uri $buQuery -Method GET -Headers $headers -ErrorAction Stop
@@ -476,15 +451,6 @@ function Get-PowerPlatformBusinessUnitId {
         
     } catch {
         Write-Error "Failed to get business unit ID: $($_.Exception.Message)"
-        
-        # Enhanced error reporting for API access issues
-        if ($_.Exception.Response) {
-            $statusCode = $_.Exception.Response.StatusCode
-            if ($statusCode -eq 401) {
-                Write-Error "TROUBLESHOOTING: Authentication failed when accessing business units. The service principal may not have sufficient permissions."
-            }
-        }
-        
         throw
     }
 }
@@ -613,13 +579,6 @@ function Update-UserBusinessUnit {
     Write-Host "Updating user business unit..."
     
     try {
-        # Ensure the Dynamics URL is properly formatted
-        $formattedDynamicsUrl = $DynamicsUrl
-        if ($formattedDynamicsUrl -notmatch "^https://") {
-            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
-        }
-        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
-        
         $headers = @{
             "Authorization" = "Bearer $AccessToken"
             "OData-MaxVersion" = "4.0"
@@ -629,7 +588,7 @@ function Update-UserBusinessUnit {
         }
         
         # Update user's business unit
-        $updateUrl = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)"
+        $updateUrl = "$DynamicsUrl/api/data/v9.2/systemusers($UserId)"
         $body = @{
             "businessunitid@odata.bind" = "/businessunits($BusinessUnitId)"
         } | ConvertTo-Json
@@ -655,13 +614,6 @@ function Add-UserToTeam {
     Write-Host "Adding user to team..."
     
     try {
-        # Ensure the Dynamics URL is properly formatted
-        $formattedDynamicsUrl = $DynamicsUrl
-        if ($formattedDynamicsUrl -notmatch "^https://") {
-            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
-        }
-        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
-        
         $headers = @{
             "Authorization" = "Bearer $AccessToken"
             "OData-MaxVersion" = "4.0"
@@ -670,28 +622,14 @@ function Add-UserToTeam {
             "Content-Type" = "application/json"
         }
         
-        # Try to add user to team using the Dataverse Action API first, fallback to association if needed
-        try {
-            $addToTeamUrl = "$formattedDynamicsUrl/api/data/v9.2/AddUserToTeam"
-            $body = @{
-                "TeamId" = $TeamId
-                "SystemUserId" = $UserId
-            } | ConvertTo-Json
-            
-            Invoke-RestMethod -Uri $addToTeamUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
-            Write-Host "Successfully added user to team using Action API" -ForegroundColor Green
-        } catch {
-            Write-Host "Action API failed, trying association method..." -ForegroundColor Yellow
-            
-            # Fallback to association method
-            $associateUrl = "$formattedDynamicsUrl/api/data/v9.2/teams($TeamId)/teammembership_association/`$ref"
-            $body = @{
-                "@odata.id" = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)"
-            } | ConvertTo-Json
-            
-            Invoke-RestMethod -Uri $associateUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
-            Write-Host "Successfully added user to team using association method" -ForegroundColor Green
-        }
+        # Associate user with team
+        $associateUrl = "$DynamicsUrl/api/data/v9.2/teams($TeamId)/teammembership_association/`$ref"
+        $body = @{
+            "@odata.id" = "$DynamicsUrl/api/data/v9.2/systemusers($UserId)"
+        } | ConvertTo-Json
+        
+        Invoke-RestMethod -Uri $associateUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
+        Write-Host "Successfully added user to team" -ForegroundColor Green
         
     } catch {
         Write-Error "Failed to add user to team: $($_.Exception.Message)"
@@ -711,13 +649,6 @@ function Remove-UserFromTeam {
     Write-Host "Removing user from team..."
     
     try {
-        # Ensure the Dynamics URL is properly formatted
-        $formattedDynamicsUrl = $DynamicsUrl
-        if ($formattedDynamicsUrl -notmatch "^https://") {
-            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
-        }
-        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
-        
         $headers = @{
             "Authorization" = "Bearer $AccessToken"
             "OData-MaxVersion" = "4.0"
@@ -725,45 +656,13 @@ function Remove-UserFromTeam {
             "Accept" = "application/json"
         }
         
-        # Try to remove user from team using the Dataverse Action API first, fallback to association if needed
-        try {
-            $removeUrl = "$formattedDynamicsUrl/api/data/v9.2/RemoveUserFromTeam"
-            $body = @{
-                "TeamId" = $TeamId
-                "SystemUserId" = $UserId
-            } | ConvertTo-Json
-            
-            $headers["Content-Type"] = "application/json"
-            Invoke-RestMethod -Uri $removeUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
-            Write-Host "Successfully removed user from team using Action API" -ForegroundColor Green
-        } catch {
-            Write-Host "Action API failed, trying association method..." -ForegroundColor Yellow
-            
-            # Fallback to association method  
-            $removeUrl = "$formattedDynamicsUrl/api/data/v9.2/teams($TeamId)/teammembership_association($UserId)/`$ref"
-            $headers.Remove("Content-Type")  # Remove content-type for DELETE
-            Invoke-RestMethod -Uri $removeUrl -Method DELETE -Headers $headers -ErrorAction Stop
-            Write-Host "Successfully removed user from team using association method" -ForegroundColor Green
-        }
+        # Remove user from team
+        $removeUrl = "$DynamicsUrl/api/data/v9.2/teams($TeamId)/teammembership_association/$UserId/`$ref"
+        Invoke-RestMethod -Uri $removeUrl -Method DELETE -Headers $headers -ErrorAction Stop
+        Write-Host "Successfully removed user from team" -ForegroundColor Green
         
     } catch {
         Write-Warning "Failed to remove user from team: $($_.Exception.Message)"
-        
-        # Enhanced error reporting for team removal
-        if ($_.Exception.Response) {
-            $statusCode = $_.Exception.Response.StatusCode
-            $statusDescription = $_.Exception.Response.StatusDescription
-            Write-Error "HTTP Status: $statusCode - $statusDescription"
-            
-            try {
-                $errorResponse = $_.Exception.Response.GetResponseStream()
-                $reader = New-Object System.IO.StreamReader($errorResponse)
-                $errorBody = $reader.ReadToEnd()
-                Write-Error "Error response body: $errorBody"
-            } catch {
-                Write-Warning "Could not read error response details: $($_.Exception.Message)"
-            }
-        }
     }
 }
 
@@ -1646,13 +1545,6 @@ try {
             if (![string]::IsNullOrWhiteSpace($userRole) -and $roleId) {
                 Write-Host "Removing assigned security role..."
                 try {
-                    # Ensure the Dynamics URL is properly formatted
-                    $formattedDynamicsUrl = $dynamicsUrl
-                    if ($formattedDynamicsUrl -notmatch "^https://") {
-                        $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
-                    }
-                    $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
-                    
                     $headers = @{
                         "Authorization" = "Bearer $accessToken"
                         "OData-MaxVersion" = "4.0"
@@ -1660,7 +1552,7 @@ try {
                         "Accept" = "application/json"
                     }
                     
-                    $removeRoleUrl = "$formattedDynamicsUrl/api/data/v9.2/systemusers($userId)/systemuserroles_association/$roleId/`$ref"
+                    $removeRoleUrl = "$dynamicsUrl/api/data/v9.2/systemusers($userId)/systemuserroles_association/$roleId/`$ref"
                     Invoke-RestMethod -Uri $removeRoleUrl -Method DELETE -Headers $headers -ErrorAction Stop
                     Write-Host "Successfully removed security role: $userRole" -ForegroundColor Green
                 } catch {
