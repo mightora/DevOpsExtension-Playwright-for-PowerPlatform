@@ -725,6 +725,14 @@ function Remove-UserFromTeam {
             "Accept" = "application/json"
         }
         
+        # Validate TeamId and UserId before attempting removal
+        if ([string]::IsNullOrWhiteSpace($TeamId) -or [string]::IsNullOrWhiteSpace($UserId)) {
+            Write-Warning "Invalid TeamId or UserId provided. Skipping team removal operation."
+            return
+        }
+
+        Write-Host "Validated TeamId: $TeamId and UserId: $UserId"
+        
         # Try to remove user from team using the Dataverse Action API first, fallback to association if needed
         try {
             $removeUrl = "$formattedDynamicsUrl/api/data/v9.2/RemoveUserFromTeam"
