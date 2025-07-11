@@ -533,6 +533,82 @@ function Remove-AllUserSecurityRoles {
     }
 }
 
+# Validate user and role compatibility before assignment
+function Test-UserRoleCompatibility {
+    param(
+        [string]$DynamicsUrl,
+        [string]$AccessToken,
+        [string]$UserId,
+        [string]$RoleId
+    )
+    
+    Write-Host "Validating user and role compatibility..."
+    
+    try {
+        # Ensure the Dynamics URL is properly formatted
+        $formattedDynamicsUrl = $DynamicsUrl
+        if ($formattedDynamicsUrl -notmatch "^https://") {
+            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
+        }
+        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
+        
+        $headers = @{
+            "Authorization" = "Bearer $AccessToken"
+            "OData-MaxVersion" = "4.0"
+            "OData-Version" = "4.0"
+            "Accept" = "application/json"
+        }
+        
+        # Get user details including business unit
+        $userQuery = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)?`$select=fullname,domainname,isdisabled,businessunitid,systemuserid&`$expand=businessunitid(`$select=name)"
+        Write-Host "Querying user details: $userQuery"
+        $userResponse = Invoke-RestMethod -Uri $userQuery -Method GET -Headers $headers -ErrorAction Stop
+        
+        # Get role details including business unit
+        $roleQuery = "$formattedDynamicsUrl/api/data/v9.2/roles($RoleId)?`$select=name,businessunitid,roleid&`$expand=businessunitid(`$select=name)"
+        Write-Host "Querying role details: $roleQuery"
+        $roleResponse = Invoke-RestMethod -Uri $roleQuery -Method GET -Headers $headers -ErrorAction Stop
+        
+        # Display compatibility information
+        Write-Host "=== USER AND ROLE COMPATIBILITY CHECK ===" -ForegroundColor Cyan
+        Write-Host "User Details:" -ForegroundColor Yellow
+        Write-Host "  - Name: $($userResponse.fullname)"
+        Write-Host "  - Domain: $($userResponse.domainname)"
+        Write-Host "  - Disabled: $($userResponse.isdisabled)"
+        Write-Host "  - User Business Unit: $($userResponse.businessunitid.name) (ID: $($userResponse.businessunitid.businessunitid))"
+        
+        Write-Host "Role Details:" -ForegroundColor Yellow
+        Write-Host "  - Role Name: $($roleResponse.name)"
+        Write-Host "  - Role Business Unit: $($roleResponse.businessunitid.name) (ID: $($roleResponse.businessunitid.businessunitid))"
+        
+        # Check for potential issues
+        $issues = @()
+        
+        if ($userResponse.isdisabled) {
+            $issues += "User is disabled - role assignment may fail"
+        }
+        
+        if ($userResponse.businessunitid.businessunitid -ne $roleResponse.businessunitid.businessunitid) {
+            $issues += "Business unit mismatch: User is in '$($userResponse.businessunitid.name)' but role is in '$($roleResponse.businessunitid.name)'"
+        }
+        
+        if ($issues.Count -gt 0) {
+            Write-Warning "Potential compatibility issues detected:"
+            $issues | ForEach-Object { Write-Warning "  - $_" }
+            Write-Host "These issues may cause role assignment to fail." -ForegroundColor Red
+            return $false
+        } else {
+            Write-Host "User and role are compatible for assignment." -ForegroundColor Green
+            return $true
+        }
+        
+    } catch {
+        Write-Warning "Could not validate user/role compatibility: $($_.Exception.Message)"
+        Write-Host "Proceeding with assignment attempt anyway..."
+        return $true  # Don't block assignment if validation fails
+    }
+}
+
 # Assign security role to user - FIXED VERSION
 function Add-UserSecurityRole {
     param(
@@ -543,6 +619,12 @@ function Add-UserSecurityRole {
     )
     
     Write-Host "Assigning security role to user..."
+    
+    # First, validate user and role compatibility
+    $isCompatible = Test-UserRoleCompatibility -DynamicsUrl $DynamicsUrl -AccessToken $AccessToken -UserId $UserId -RoleId $RoleId
+    if (-not $isCompatible) {
+        Write-Warning "Compatibility issues detected, but continuing with assignment attempt..."
+    }
     
     try {
         # Ensure the Dynamics URL is properly formatted
@@ -635,8 +717,71 @@ function Add-UserSecurityRole {
             Write-Warning "Method 3 failed: $($_.Exception.Message)"
         }
         
+        # Method 4: Try using systemuserroles collection directly (POST method)
+        try {
+            Write-Host "Attempting role assignment using systemuserroles collection POST..."
+            $rolesCollectionUrl = "$formattedDynamicsUrl/api/data/v9.2/systemuserroles"
+            $rolesBody = @{
+                "systemuserid@odata.bind" = "/systemusers($UserId)"
+                "roleid@odata.bind" = "/roles($RoleId)"
+            } | ConvertTo-Json
+            
+            Write-Host "POST URL: $rolesCollectionUrl"
+            Write-Host "Request Body: $rolesBody"
+            
+            Invoke-RestMethod -Uri $rolesCollectionUrl -Method POST -Headers $headers -Body $rolesBody -ErrorAction Stop
+            Write-Host "Successfully assigned security role using systemuserroles collection POST" -ForegroundColor Green
+            return
+        }
+        catch {
+            Write-Warning "Method 4 failed: $($_.Exception.Message)"
+        }
+        
+        # Method 5: Try using AddUserToRoleRequest action (CRM specific)
+        try {
+            Write-Host "Attempting role assignment using AddUserToRoleRequest action..."
+            $addUserToRoleUrl = "$formattedDynamicsUrl/api/data/v9.2/AddUserToRole"
+            $addUserBody = @{
+                UserId = $UserId
+                RoleId = $RoleId
+            } | ConvertTo-Json
+            
+            Write-Host "POST URL: $addUserToRoleUrl"
+            Write-Host "Request Body: $addUserBody"
+            
+            Invoke-RestMethod -Uri $addUserToRoleUrl -Method POST -Headers $headers -Body $addUserBody -ErrorAction Stop
+            Write-Host "Successfully assigned security role using AddUserToRoleRequest action" -ForegroundColor Green
+            return
+        }
+        catch {
+            Write-Warning "Method 5 failed: $($_.Exception.Message)"
+        }
+        
+        # Method 6: Try alternative association format
+        try {
+            Write-Host "Attempting role assignment using alternative association format..."
+            $altAssociateUrl = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)/systemuserroles_association"
+            $altBody = @{
+                "@odata.id" = "$formattedDynamicsUrl/api/data/v9.2/roles($RoleId)"
+            } | ConvertTo-Json
+            
+            # Add specific headers for this method
+            $altHeaders = $headers.Clone()
+            $altHeaders["If-None-Match"] = "*"  # Prevent conflicts
+            
+            Write-Host "POST URL: $altAssociateUrl"
+            Write-Host "Request Body: $altBody"
+            
+            Invoke-RestMethod -Uri $altAssociateUrl -Method POST -Headers $altHeaders -Body $altBody -ErrorAction Stop
+            Write-Host "Successfully assigned security role using alternative association format" -ForegroundColor Green
+            return
+        }
+        catch {
+            Write-Warning "Method 6 failed: $($_.Exception.Message)"
+        }
+        
         # If all methods fail, throw a comprehensive error
-        throw "All role assignment methods failed. Please check service principal permissions and role configuration."
+        throw "All 6 role assignment methods failed. Please check service principal permissions and role configuration."
         
     } catch {
         Write-Error "Failed to assign security role: $($_.Exception.Message)"
@@ -672,6 +817,21 @@ function Add-UserSecurityRole {
                     Write-Error "3. Malformed request URL or body"
                     Write-Error "4. The role cannot be assigned to this user type"
                     Write-Error "5. Business unit mismatch between user and role"
+                    Write-Error "6. The service principal lacks 'Assign Role' privilege"
+                    Write-Error "7. The target user may be disabled or in wrong state"
+                }
+                elseif ($statusCode -eq 404) {
+                    Write-Error "TROUBLESHOOTING: Not Found (404) - Common causes:"
+                    Write-Error "1. The API endpoint is not available in this Dynamics version"
+                    Write-Error "2. The service principal lacks access to the systemuserroles entity"
+                    Write-Error "3. The Microsoft.Dynamics.CRM.Associate action is not supported"
+                    Write-Error "4. Invalid entity relationship name"
+                }
+                elseif ($statusCode -eq 403) {
+                    Write-Error "TROUBLESHOOTING: Forbidden (403) - Permission denied"
+                    Write-Error "1. Service principal needs 'prvAssignRole' privilege"
+                    Write-Error "2. Service principal needs write access to systemuserroles entity"
+                    Write-Error "3. Check if the service principal can modify user security settings"
                 }
             } catch {
                 Write-Warning "Could not read detailed error response: $($_.Exception.Message)"
@@ -690,6 +850,15 @@ function Add-UserSecurityRole {
         Write-Error "2. Check that the role '$userRole' exists and is active"
         Write-Error "3. Ensure the user and role are in compatible business units"
         Write-Error "4. Confirm the service principal can read/write systemuserroles entity"
+        Write-Error "5. Check if the service principal has 'prvAssignRole' privilege specifically"
+        Write-Error "6. Verify the target user is enabled and not in a disabled state"
+        Write-Error "7. Ensure both user and role are in the same or compatible business units"
+        Write-Error ""
+        Write-Error "MANUAL VERIFICATION COMMANDS:"
+        Write-Error "1. Test role query: GET $formattedDynamicsUrl/api/data/v9.2/roles($RoleId)"
+        Write-Error "2. Test user query: GET $formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)"
+        Write-Error "3. Check existing roles: GET $formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)/systemuserroles_association"
+        Write-Error "4. Check service principal permissions: Use Power Platform admin center"
         
         throw
     }
@@ -1617,10 +1786,20 @@ if (![string]::IsNullOrWhiteSpace($tenantId) -and
         if (![string]::IsNullOrWhiteSpace($userRole)) {
             Write-Host "Configuring security role assignment..."
             $roleId = Get-PowerPlatformRoleId -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -RoleName $userRole
+            
+            # If business unit is also being changed, do that first to ensure compatibility
+            if (![string]::IsNullOrWhiteSpace($businessUnit)) {
+                Write-Host "Business unit change detected - updating business unit before role assignment..."
+                $businessUnitId = Get-PowerPlatformBusinessUnitId -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -BusinessUnitName $businessUnit
+                Update-UserBusinessUnit -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -UserId $userId -BusinessUnitId $businessUnitId
+                Write-Host "Business unit updated - proceeding with role assignment..."
+            }
+            
             Add-UserSecurityRole -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -UserId $userId -RoleId $roleId
         }
         
-        if (![string]::IsNullOrWhiteSpace($businessUnit)) {
+        if (![string]::IsNullOrWhiteSpace($businessUnit) -and [string]::IsNullOrWhiteSpace($userRole)) {
+            # Only update business unit if role assignment didn't already handle it
             Write-Host "Configuring business unit assignment..."
             $businessUnitId = Get-PowerPlatformBusinessUnitId -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -BusinessUnitName $businessUnit
             Update-UserBusinessUnit -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -UserId $userId -BusinessUnitId $businessUnitId
