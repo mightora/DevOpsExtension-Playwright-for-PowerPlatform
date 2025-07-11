@@ -2021,24 +2021,34 @@ try {
                         "OData-Version" = "4.0"
                         "Accept" = "application/json"
                     }
-                    
+
                     $removeRoleUrl = "$dynamicsUrl/api/data/v9.2/systemusers($userId)/systemuserroles_association/$roleId/`$ref"
+                    Write-Host "Sending DELETE request to URL: $removeRoleUrl" -ForegroundColor Yellow
+                    Write-Host "Headers: $($headers | Out-String)" -ForegroundColor Yellow
+
                     Invoke-RestMethod -Uri $removeRoleUrl -Method DELETE -Headers $headers -ErrorAction Stop
                     Write-Host "Successfully removed security role: $userRole" -ForegroundColor Green
                 } catch {
                     Write-Warning "Failed to remove security role: $($_.Exception.Message)"
+                    if ($_.Exception.Response -ne $null) {
+                        $responseContent = $_.Exception.Response.GetResponseStream()
+                        if ($responseContent -ne $null) {
+                            $reader = New-Object System.IO.StreamReader($responseContent)
+                            $responseBody = $reader.ReadToEnd()
+                            Write-Warning "Response Body: $responseBody"
+                        }
+                    }
                 }
             }
             
             # Remove from team if it was assigned
             if (![string]::IsNullOrWhiteSpace($team) -and $teamId) {
-                Write-Host "Removing user from team..."
-                Remove-UserFromTeam -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -UserId $userId -TeamId $teamId
+                Write-Host "Note: Team assignment can not be cleaned up only reassigned."
             }
             
             # Note: Business unit changes are typically not reverted in cleanup as they may affect user's core access
             if (![string]::IsNullOrWhiteSpace($businessUnit)) {
-                Write-Host "Note: Business unit assignment cleanup skipped to preserve user access"
+                Write-Host "Note: Business unit assignment can not be cleaned up only reassigned."
             }
             
             Write-Host "Power Platform cleanup completed!" -ForegroundColor Green
