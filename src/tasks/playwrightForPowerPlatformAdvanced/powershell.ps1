@@ -1604,8 +1604,13 @@ if (![string]::IsNullOrWhiteSpace($tenantId) -and
         # Step 5: Configure user assignments if specified
         if (![string]::IsNullOrWhiteSpace($userRole)) {
             Write-Host "Configuring security role assignment..."
-            $roleId = Get-PowerPlatformRoleId -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -RoleName $userRole
-            Add-UserSecurityRole -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -UserId $userId -RoleId $roleId
+            try {
+                $roleId = Get-PowerPlatformRoleId -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -RoleName $userRole
+                Add-UserSecurityRole -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -UserId $userId -RoleId $roleId
+            } catch {
+                # The detailed error information has already been logged by Add-UserSecurityRole
+                throw "Security role assignment failed. See detailed error information above."
+            }
         }
         
         if (![string]::IsNullOrWhiteSpace($businessUnit)) {
