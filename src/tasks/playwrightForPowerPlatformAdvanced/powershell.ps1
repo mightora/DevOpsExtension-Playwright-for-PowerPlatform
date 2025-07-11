@@ -66,6 +66,70 @@ function Write-SecureHost {
     }
 }
 
+# Helper function to test Power Platform API access
+function Test-PowerPlatformAccess {
+    param(
+        [string]$DynamicsUrl,
+        [string]$AccessToken
+    )
+    
+    Write-Host "Testing Power Platform API access..."
+    
+    try {
+        # Ensure the Dynamics URL is properly formatted
+        $formattedDynamicsUrl = $DynamicsUrl
+        if ($formattedDynamicsUrl -notmatch "^https://") {
+            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
+        }
+        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
+        
+        $headers = @{
+            "Authorization" = "Bearer $AccessToken"
+            "OData-MaxVersion" = "4.0"
+            "OData-Version" = "4.0"
+            "Accept" = "application/json"
+            "Content-Type" = "application/json"
+        }
+        
+        # Test API access with a simple query
+        $testQuery = "$formattedDynamicsUrl/api/data/v9.2/WhoAmI"
+        Write-Host "Testing API access: $testQuery"
+        
+        $response = Invoke-RestMethod -Uri $testQuery -Method GET -Headers $headers -ErrorAction Stop
+        
+        if ($response.UserId) {
+            Write-Host "API access test successful. Service principal user ID: $($response.UserId)" -ForegroundColor Green
+            return $true
+        } else {
+            Write-Warning "API access test completed but no user ID returned"
+            return $false
+        }
+        
+    } catch {
+        Write-Error "Power Platform API access test failed: $($_.Exception.Message)"
+        
+        if ($_.Exception.Response) {
+            $statusCode = $_.Exception.Response.StatusCode
+            $statusDescription = $_.Exception.Response.StatusDescription
+            Write-Error "HTTP Status: $statusCode - $statusDescription"
+            
+            if ($statusCode -eq 401) {
+                Write-Error "CRITICAL: The service principal does not have access to Power Platform."
+                Write-Error "Required steps to fix this issue:"
+                Write-Error "1. Register the app in Azure AD if not already done"
+                Write-Error "2. Add 'Dynamics CRM' API permissions to the app registration"
+                Write-Error "3. Grant admin consent for the API permissions"
+                Write-Error "4. Add the service principal as an application user in Power Platform admin center"
+                Write-Error "5. Assign appropriate security roles to the application user"
+                Write-Error ""
+                Write-Error "Power Platform Admin Center > Environments > [Your Environment] > Settings > Users + permissions > Application users"
+            }
+        }
+        
+        return $false
+    }
+}
+
 # Get Access Token from Azure AD using Client Credentials
 function Get-PowerPlatformAccessToken {
     param(
@@ -198,15 +262,23 @@ function Get-PowerPlatformUserId {
     Write-Host "Getting user ID for username: $Username"
     
     try {
+        # Ensure the Dynamics URL is properly formatted
+        $formattedDynamicsUrl = $DynamicsUrl
+        if ($formattedDynamicsUrl -notmatch "^https://") {
+            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
+        }
+        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
+        
         $headers = @{
             "Authorization" = "Bearer $AccessToken"
             "OData-MaxVersion" = "4.0"
             "OData-Version" = "4.0"
             "Accept" = "application/json"
+            "Content-Type" = "application/json"
         }
         
         # Query for user by domainname (username)
-        $userQuery = "$DynamicsUrl/api/data/v9.2/systemusers?`$filter=domainname eq '$Username'"
+        $userQuery = "$formattedDynamicsUrl/api/data/v9.2/systemusers?`$filter=domainname eq '$Username'"
         Write-Host "Querying user: $userQuery"
         
         $response = Invoke-RestMethod -Uri $userQuery -Method GET -Headers $headers -ErrorAction Stop
@@ -222,6 +294,32 @@ function Get-PowerPlatformUserId {
         
     } catch {
         Write-Error "Failed to get user ID: $($_.Exception.Message)"
+        
+        # Enhanced error reporting for API access issues
+        if ($_.Exception.Response) {
+            $statusCode = $_.Exception.Response.StatusCode
+            $statusDescription = $_.Exception.Response.StatusDescription
+            Write-Error "HTTP Status: $statusCode - $statusDescription"
+            
+            if ($statusCode -eq 401) {
+                Write-Error "TROUBLESHOOTING: Authentication/Authorization failed. Please verify:"
+                Write-Error "1. The service principal has 'Dynamics 365' API permissions"
+                Write-Error "2. The service principal is added as an application user in Power Platform"
+                Write-Error "3. The application user has appropriate security roles assigned"
+                Write-Error "4. The access token is valid and not expired"
+                Write-Error "5. The Dynamics URL is correct: $formattedDynamicsUrl"
+            }
+            
+            try {
+                $errorResponse = $_.Exception.Response.GetResponseStream()
+                $reader = New-Object System.IO.StreamReader($errorResponse)
+                $errorBody = $reader.ReadToEnd()
+                Write-Error "Error response body: $errorBody"
+            } catch {
+                Write-Warning "Could not read error response details: $($_.Exception.Message)"
+            }
+        }
+        
         throw
     }
 }
@@ -237,15 +335,23 @@ function Get-PowerPlatformRoleId {
     Write-Host "Getting role ID for role: $RoleName"
     
     try {
+        # Ensure the Dynamics URL is properly formatted
+        $formattedDynamicsUrl = $DynamicsUrl
+        if ($formattedDynamicsUrl -notmatch "^https://") {
+            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
+        }
+        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
+        
         $headers = @{
             "Authorization" = "Bearer $AccessToken"
             "OData-MaxVersion" = "4.0"
             "OData-Version" = "4.0"
             "Accept" = "application/json"
+            "Content-Type" = "application/json"
         }
         
         # Query for role by name
-        $roleQuery = "$DynamicsUrl/api/data/v9.2/roles?`$filter=name eq '$RoleName'"
+        $roleQuery = "$formattedDynamicsUrl/api/data/v9.2/roles?`$filter=name eq '$RoleName'"
         Write-Host "Querying role: $roleQuery"
         
         $response = Invoke-RestMethod -Uri $roleQuery -Method GET -Headers $headers -ErrorAction Stop
@@ -260,6 +366,15 @@ function Get-PowerPlatformRoleId {
         
     } catch {
         Write-Error "Failed to get role ID: $($_.Exception.Message)"
+        
+        # Enhanced error reporting for API access issues
+        if ($_.Exception.Response) {
+            $statusCode = $_.Exception.Response.StatusCode
+            if ($statusCode -eq 401) {
+                Write-Error "TROUBLESHOOTING: Authentication failed when accessing roles. The service principal may not have sufficient permissions."
+            }
+        }
+        
         throw
     }
 }
@@ -352,15 +467,23 @@ function Remove-AllUserSecurityRoles {
     Write-Host "Removing all existing security roles from user..."
     
     try {
+        # Ensure the Dynamics URL is properly formatted
+        $formattedDynamicsUrl = $DynamicsUrl
+        if ($formattedDynamicsUrl -notmatch "^https://") {
+            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
+        }
+        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
+        
         $headers = @{
             "Authorization" = "Bearer $AccessToken"
             "OData-MaxVersion" = "4.0"
             "OData-Version" = "4.0"
             "Accept" = "application/json"
+            "Content-Type" = "application/json"
         }
         
         # Get current user roles
-        $userRolesQuery = "$DynamicsUrl/api/data/v9.2/systemusers($UserId)/systemuserroles_association"
+        $userRolesQuery = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)/systemuserroles_association"
         Write-Host "Querying current user roles..."
         
         $response = Invoke-RestMethod -Uri $userRolesQuery -Method GET -Headers $headers -ErrorAction Stop
@@ -374,7 +497,7 @@ function Remove-AllUserSecurityRoles {
                 
                 try {
                     # Remove role association
-                    $removeUrl = "$DynamicsUrl/api/data/v9.2/systemusers($UserId)/systemuserroles_association/$roleId/`$ref"
+                    $removeUrl = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)/systemuserroles_association/$roleId/`$ref"
                     Invoke-RestMethod -Uri $removeUrl -Method DELETE -Headers $headers -ErrorAction Stop
                     Write-Host "Removed role: $roleName" -ForegroundColor Yellow
                 } catch {
@@ -389,6 +512,15 @@ function Remove-AllUserSecurityRoles {
         
     } catch {
         Write-Error "Failed to remove user security roles: $($_.Exception.Message)"
+        
+        # Enhanced error reporting for API access issues
+        if ($_.Exception.Response) {
+            $statusCode = $_.Exception.Response.StatusCode
+            if ($statusCode -eq 401) {
+                Write-Error "TROUBLESHOOTING: Authentication failed when accessing user roles. The service principal may not have sufficient permissions to modify user security roles."
+            }
+        }
+        
         throw
     }
 }
@@ -405,6 +537,13 @@ function Add-UserSecurityRole {
     Write-Host "Assigning security role to user..."
     
     try {
+        # Ensure the Dynamics URL is properly formatted
+        $formattedDynamicsUrl = $DynamicsUrl
+        if ($formattedDynamicsUrl -notmatch "^https://") {
+            $formattedDynamicsUrl = "https://$formattedDynamicsUrl"
+        }
+        $formattedDynamicsUrl = $formattedDynamicsUrl.TrimEnd('/')
+        
         $headers = @{
             "Authorization" = "Bearer $AccessToken"
             "OData-MaxVersion" = "4.0"
@@ -414,9 +553,9 @@ function Add-UserSecurityRole {
         }
         
         # Associate role with user
-        $associateUrl = "$DynamicsUrl/api/data/v9.2/systemusers($UserId)/systemuserroles_association/`$ref"
+        $associateUrl = "$formattedDynamicsUrl/api/data/v9.2/systemusers($UserId)/systemuserroles_association/`$ref"
         $body = @{
-            "@odata.id" = "$DynamicsUrl/api/data/v9.2/roles($RoleId)"
+            "@odata.id" = "$formattedDynamicsUrl/api/data/v9.2/roles($RoleId)"
         } | ConvertTo-Json
         
         Invoke-RestMethod -Uri $associateUrl -Method POST -Headers $headers -Body $body -ErrorAction Stop
@@ -1303,13 +1442,19 @@ if (![string]::IsNullOrWhiteSpace($tenantId) -and
         # Step 1: Get Access Token
         $accessToken = Get-PowerPlatformAccessToken -TenantId $tenantId -ClientId $clientId -ClientSecret $clientSecret -DynamicsUrl $dynamicsUrl
         
-        # Step 2: Get User ID
+        # Step 2: Test API Access
+        $apiAccessTest = Test-PowerPlatformAccess -DynamicsUrl $dynamicsUrl -AccessToken $accessToken
+        if (-not $apiAccessTest) {
+            throw "Power Platform API access test failed. Please check service principal configuration."
+        }
+        
+        # Step 3: Get User ID
         $userId = Get-PowerPlatformUserId -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -Username $o365Username
         
-        # Step 3: Remove all existing security roles
+        # Step 4: Remove all existing security roles
         Remove-AllUserSecurityRoles -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -UserId $userId
         
-        # Step 4: Configure user assignments if specified
+        # Step 5: Configure user assignments if specified
         if (![string]::IsNullOrWhiteSpace($userRole)) {
             Write-Host "Configuring security role assignment..."
             $roleId = Get-PowerPlatformRoleId -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -RoleName $userRole
