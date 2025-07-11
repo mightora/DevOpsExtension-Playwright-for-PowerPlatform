@@ -1682,10 +1682,8 @@ try {
                 Remove-UserFromTeam -DynamicsUrl $dynamicsUrl -AccessToken $accessToken -UserId $userId -TeamId $teamId
             }
             
-            # Note: Business unit changes are typically not reverted in cleanup as they may affect user's core access
-            if (![string]::IsNullOrWhiteSpace($businessUnit)) {
-                Write-Host "Note: Business unit assignment cleanup skipped to preserve user access"
-            }
+            # Skip team and business unit removal during cleanup
+            Write-Host "Skipping team and business unit removal to preserve user access"
             
             Write-Host "Power Platform cleanup completed!" -ForegroundColor Green
             

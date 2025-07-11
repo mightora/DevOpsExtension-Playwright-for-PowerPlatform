@@ -4,7 +4,7 @@
     "name": "mightoria-playwrightForPowerPlatformAdvanced",
     "friendlyName": "Playwright for Power Platform Advanced",
     "instanceNameFormat": "Playwright for Power Platform Advanced",
-    "description": "Execute end-to-end tests on Power Platform applications using Playwright with advanced configuration options. This DevOps extension automatically sets up Playwright, installs dependencies, runs your test suite against Power Platform apps, and generates comprehensive test reports with screenshots, traces, and detailed failure analysis for CI/CD pipelines.",
+    "description": "Execute end-to-end tests on Power Platform applications using Playwright with advanced configuration options. This DevOps extension automatically sets up Playwright, installs dependencies, runs your test suite against Power Platform apps, and generates comprehensive test reports with screenshots, traces, and detailed failure analysis for CI/CD pipelines. Additionally, it provides advanced user management capabilities, including setting user roles, assigning teams, and configuring business units within the Power Platform environment.",
     "helpMarkDown": "See [mightora.io](https://mightora.io)",
     "category": "Build",
     "author": "mightoraio",
