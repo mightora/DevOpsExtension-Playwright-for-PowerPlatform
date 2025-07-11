@@ -2022,7 +2022,13 @@ try {
                         "Accept" = "application/json"
                     }
 
-                    $removeRoleUrl = "$dynamicsUrl/api/data/v9.2/systemusers($userId)/systemuserroles_association/$roleId/`$ref"
+                    # Ensure the dynamics URL is properly formatted with https://
+                    $cleanDynamicsUrl = $dynamicsUrl
+                    if (-not $cleanDynamicsUrl.StartsWith("https://") -and -not $cleanDynamicsUrl.StartsWith("http://")) {
+                        $cleanDynamicsUrl = "https://$cleanDynamicsUrl"
+                    }
+                    
+                    $removeRoleUrl = "$cleanDynamicsUrl/api/data/v9.2/systemusers($userId)/systemuserroles_association/$roleId/`$ref"
                     Write-Host "Sending DELETE request to URL: $removeRoleUrl" -ForegroundColor Yellow
                     Write-Host "Headers: $($headers | Out-String)" -ForegroundColor Yellow
 
