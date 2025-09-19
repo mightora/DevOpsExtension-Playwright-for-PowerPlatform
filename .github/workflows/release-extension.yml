@@ -6,7 +6,8 @@ on:
       - main
       - develop
       - feature/*
-      - hotfix/*
+      - bugfix/*
+      - bugfix250919
 
 jobs:
   release:
