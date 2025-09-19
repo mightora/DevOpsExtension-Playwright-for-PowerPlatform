@@ -1198,7 +1198,8 @@ function Install-NodeJS {
 function Clone-PlaywrightRepository {
     param(
         [string]$RepositoryUrl = "https://github.com/itweedie/playwrightOnPowerPlatform.git",
-        [string]$TargetFolder = "playwright"
+        [string]$TargetFolder = "playwright",
+        [string]$Branch = ""  # Optional branch/tag/commit to clone
     )
     
     Write-Host "Cloning Playwright repository..."
@@ -1227,7 +1228,13 @@ function Clone-PlaywrightRepository {
         Write-Host "Cloning repository from: $RepositoryUrl"
         Write-Host "Target folder: $playwrightPath"
         
-        & git clone $RepositoryUrl $playwrightPath
+        if (![string]::IsNullOrWhiteSpace($Branch)) {
+            Write-Host "Cloning specific branch/tag/commit: $Branch"
+            & git clone --branch $Branch $RepositoryUrl $playwrightPath
+        } else {
+            Write-Host "Cloning default branch"
+            & git clone $RepositoryUrl $playwrightPath
+        }
         
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Successfully cloned Playwright repository to: $playwrightPath"
@@ -1800,6 +1807,8 @@ $appUrl = Get-VstsInput -Name 'appUrl'
 $appName = Get-VstsInput -Name 'appName'
 $o365Username = Get-VstsInput -Name 'o365Username'
 $o365Password = Get-VstsInput -Name 'o365Password'
+$playwrightRepository = Get-VstsInput -Name 'playwrightRepository'
+$playwrightBranch = Get-VstsInput -Name 'playwrightBranch'
 
 # Get new Power Platform advanced inputs
 $tenantId = Get-VstsInput -Name 'tenantId'
@@ -1997,7 +2006,13 @@ Write-Host "==========================================================="
 # Clone Playwright repository
 Write-Host "==========================================================="
 Write-Host "Cloning Playwright repository..."
-Clone-PlaywrightRepository
+
+# Use custom repository URL if provided, otherwise use default
+$repositoryUrl = if (![string]::IsNullOrWhiteSpace($playwrightRepository)) { $playwrightRepository } else { "https://github.com/itweedie/playwrightOnPowerPlatform.git" }
+
+# Call function with branch parameter
+Clone-PlaywrightRepository -RepositoryUrl $repositoryUrl -Branch $playwrightBranch
+
 Write-Host "==========================================================="
 
 # Install Playwright from the cloned repository

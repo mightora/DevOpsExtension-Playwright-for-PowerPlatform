@@ -11,7 +11,7 @@
     "version": {
         "Major": 1,
         "Minor": 0,
-        "Patch": 14
+        "Patch": 15
     },
     "groups": [
         {
@@ -33,6 +33,24 @@
             "defaultValue": "$(System.DefaultWorkingDirectory)/PlaywrightTests",
             "required": true,
             "helpMarkDown": "Path to the folder containing Playwright tests to copy",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "playwrightRepository",
+            "type": "string",
+            "label": "Playwright Repository URL",
+            "defaultValue": "https://github.com/itweedie/playwrightOnPowerPlatform.git",
+            "required": false,
+            "helpMarkDown": "Git repository URL containing the Playwright framework and configuration. Leave empty to use default repository.",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "playwrightBranch",
+            "type": "string",
+            "label": "Playwright Repository Branch",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Specific branch, tag, or commit to clone from the Playwright repository. Leave empty to use the default branch.",
             "groupName": "inputGroup"
         },
         {
