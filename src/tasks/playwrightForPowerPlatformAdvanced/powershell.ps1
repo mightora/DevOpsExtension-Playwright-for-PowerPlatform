@@ -1583,9 +1583,10 @@ function Run-PlaywrightTests {
             # Return to previous location
             Pop-Location
             
-            Write-Host "============================================" -ForegroundColor $(if ($testExitCode -eq 0) { "Green" } else { "Red" })
-            Write-Host "Test execution completed with exit code: $testExitCode" -ForegroundColor $(if ($testExitCode -eq 0) { "Green" } else { "Red" })
-            Write-Host "============================================" -ForegroundColor $(if ($testExitCode -eq 0) { "Green" } else { "Red" })
+            $summaryColor = if ($testExitCode -eq 0) { 'Green' } else { 'Red' }
+            Write-Host "============================================" -ForegroundColor $summaryColor
+            Write-Host "Test execution completed with exit code: $testExitCode" -ForegroundColor $summaryColor
+            Write-Host "============================================" -ForegroundColor $summaryColor
         } catch {
             Write-Error "Failed to execute Playwright tests: $($_.Exception.Message)"
             Write-Host "Error details: $($_.Exception)" -ForegroundColor Red

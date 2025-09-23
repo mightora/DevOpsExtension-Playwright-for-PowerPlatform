@@ -511,10 +511,12 @@ function Run-PlaywrightTests {
             
             # Return to previous location
             Pop-Location
-            
-            Write-Host "============================================" -ForegroundColor $(if ($testExitCode -eq 0) { "Green" } else { "Red" })
-            Write-Host "Test execution completed with exit code: $testExitCode" -ForegroundColor $(if ($testExitCode -eq 0) { "Green" } else { "Red" })
-            Write-Host "============================================" -ForegroundColor $(if ($testExitCode -eq 0) { "Green" } else { "Red" })
+
+            # Use a simple variable for color to avoid nested expressions inside the Write-Host call
+            $summaryColor = if ($testExitCode -eq 0) { 'Green' } else { 'Red' }
+            Write-Host "============================================" -ForegroundColor $summaryColor
+            Write-Host "Test execution completed with exit code: $testExitCode" -ForegroundColor $summaryColor
+            Write-Host "============================================" -ForegroundColor $summaryColor
         } catch {
             Write-Error "Failed to execute Playwright tests: $($_.Exception.Message)"
             Write-Host "Error details: $($_.Exception)" -ForegroundColor Red
@@ -534,7 +536,8 @@ function Run-PlaywrightTests {
             try {
                 Write-Host "Running playwright list to check test discovery..." -ForegroundColor Cyan
                 $listProcess = Start-Process -FilePath "npx" -ArgumentList "playwright test --list" -WorkingDirectory $playwrightPath -Wait -PassThru -NoNewWindow
-                Write-Host "Test list exit code: $($listProcess.ExitCode)" -ForegroundColor $(if ($listProcess.ExitCode -eq 0) { "Green" } else { "Red" })
+                $listColor = if ($listProcess.ExitCode -eq 0) { 'Green' } else { 'Red' }
+                Write-Host "Test list exit code: $($listProcess.ExitCode)" -ForegroundColor $listColor
             } catch {
                 Write-Host "Could not run test list check: $($_.Exception.Message)" -ForegroundColor Red
             }
@@ -668,7 +671,8 @@ function Run-PlaywrightTests {
                     Write-Host "Command: $verboseCommand" -ForegroundColor Gray
                     
                     $verboseProcess = Start-Process -FilePath "npx" -ArgumentList "playwright", "test", $testFiles.FullName, "--reporter=line", "--headed=false", "--workers=1", "--timeout=30000" -WorkingDirectory $playwrightPath -Wait -PassThru -NoNewWindow
-                    Write-Host "Verbose test exit code: $($verboseProcess.ExitCode)" -ForegroundColor $(if ($verboseProcess.ExitCode -eq 0) { "Green" } else { "Red" })
+                    $verboseColor = if ($verboseProcess.ExitCode -eq 0) { 'Green' } else { 'Red' }
+                    Write-Host "Verbose test exit code: $($verboseProcess.ExitCode)" -ForegroundColor $verboseColor
                 } else {
                     Write-Host "No test files found for verbose execution" -ForegroundColor Red
                 }
@@ -861,6 +865,7 @@ function Copy-TestResultsToOutput {
         throw
     }
 }
+
 
 # Display the developer message
 $developerMessage = Fetch-DeveloperMessage
