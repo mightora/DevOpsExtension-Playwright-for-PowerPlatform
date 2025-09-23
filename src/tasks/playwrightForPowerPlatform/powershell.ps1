@@ -1,13 +1,13 @@
 <#
     ===========================================================
-    Task: Mightora Commit To Git Repository
+    Task: Mightora Playwright for Power Platform
     
     Originally Created By: Ian Tweedie [https://iantweedie.biz] (Date: 2024-10-08)
     Date: 2024-10-08
 
     Contributors:
-    - Developer A (Contributions: Improved Git configuration handling)
-    - Developer B (Contributions: Added support for custom commit messages)
+    - Enhanced with live output streaming and JUnit XML integration
+    - Improved error handling and troubleshooting capabilities
     
     ===========================================================
 #>
@@ -759,30 +759,11 @@ function Copy-TestResultsToOutput {
                     Remove-Item -Path $destTestResults -Recurse -Force
                 }
                 
-                # Ensure parent directory exists and create the full path
-                $destParent = Split-Path $destTestResults -Parent
-                if (!(Test-Path $destParent)) {
-                    Write-Host "Creating parent directory: $destParent"
-                    New-Item -Path $destParent -ItemType Directory -Force | Out-Null
-                }
-                
                 # Copy the entire folder structure
-                Write-Host "Copying test-results folder structure..."
                 Copy-Item -Path $sourceTestResults -Destination $OutputLocation -Recurse -Force
                 Write-Host "Successfully copied test-results folder"
             } catch {
                 Write-Warning "Failed to copy test-results folder: $($_.Exception.Message)"
-                Write-Host "Attempting alternative copy method..."
-                try {
-                    # Alternative method: Create destination first, then copy contents
-                    if (!(Test-Path $destTestResults)) {
-                        New-Item -Path $destTestResults -ItemType Directory -Force | Out-Null
-                    }
-                    Copy-Item -Path "$sourceTestResults\*" -Destination $destTestResults -Recurse -Force
-                    Write-Host "Successfully copied test-results using alternative method"
-                } catch {
-                    Write-Error "Failed to copy test-results with both methods: $($_.Exception.Message)"
-                }
             }
         } else {
             Write-Warning "No test-results folder found at: $sourceTestResults"
@@ -800,30 +781,11 @@ function Copy-TestResultsToOutput {
                     Remove-Item -Path $destReports -Recurse -Force
                 }
                 
-                # Ensure parent directory exists and create the full path
-                $destParent = Split-Path $destReports -Parent
-                if (!(Test-Path $destParent)) {
-                    Write-Host "Creating parent directory: $destParent"
-                    New-Item -Path $destParent -ItemType Directory -Force | Out-Null
-                }
-                
                 # Copy the entire folder structure
-                Write-Host "Copying playwright-report folder structure..."
                 Copy-Item -Path $sourceReports -Destination $OutputLocation -Recurse -Force
                 Write-Host "Successfully copied playwright-report folder"
             } catch {
                 Write-Warning "Failed to copy playwright-report folder: $($_.Exception.Message)"
-                Write-Host "Attempting alternative copy method..."
-                try {
-                    # Alternative method: Create destination first, then copy contents
-                    if (!(Test-Path $destReports)) {
-                        New-Item -Path $destReports -ItemType Directory -Force | Out-Null
-                    }
-                    Copy-Item -Path "$sourceReports\*" -Destination $destReports -Recurse -Force
-                    Write-Host "Successfully copied playwright-report using alternative method"
-                } catch {
-                    Write-Error "Failed to copy playwright-report with both methods: $($_.Exception.Message)"
-                }
             }
         } else {
             Write-Warning "No playwright-report folder found at: $sourceReports"
@@ -850,9 +812,9 @@ function Copy-TestResultsToOutput {
                     Write-Warning "Failed to copy JUnit file $($junitFile.Name): $($_.Exception.Message)"
                 }
             }
-            Write-Host "✅ JUnit XML files available for Azure DevOps test result publishing" -ForegroundColor Green
+            Write-Host "JUnit XML files available for Azure DevOps test result publishing" -ForegroundColor Green
         } else {
-            Write-Host "ℹ️  No JUnit XML files found - results available in HTML format only" -ForegroundColor Yellow
+            Write-Host "No JUnit XML files found - results available in HTML format only" -ForegroundColor Yellow
         }
         
         # Summary
@@ -969,15 +931,11 @@ Write-Host "==========================================================="
 Write-Host "==========================================================="
 Write-Host "Copying test results and reports to output location..."
 Copy-TestResultsToOutput -OutputLocation $outputLocation
-Write-Host "==========================================================="
+Write-Host "====================================================================="
 
-
-# Output the script information at runtime
-Write-Host "==========================================================="
+Write-Host "====================================================================="
 Write-Host "Task: Mightora Playwright for Power Platform"
-Write-Host "Originally Created By: Ian Tweedie [https://iantweedie.biz] (Date: 2025-05-25)"
-Write-Host "Contributors:"
-#Write-Host " - Developer A (Contributions: Improved Git configuration handling)"
-#Write-Host " - Developer B (Contributions: Added support for custom commit messages)"
-Write-Host "==========================================================="
+Write-Host "Originally Created By: Ian Tweedie [https://iantweedie.biz] (Date: 2024-10-08)"
+Write-Host "Contributors: Enhanced with live output and JUnit XML integration"
+Write-Host "====================================================================="
 
