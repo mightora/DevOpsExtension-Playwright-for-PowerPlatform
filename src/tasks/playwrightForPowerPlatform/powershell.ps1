@@ -456,7 +456,7 @@ function Run-PlaywrightTests {
         
         # Add performance optimizations for CI/CD
         $testCommand += " --workers=2"  # Limit workers to prevent resource exhaustion
-        $testCommand += " --reporter=html,line"  # Use both HTML and line reporters for better output
+        $testCommand += " --reporter=list,html"  # Use list reporter for live output and HTML for detailed report
         
         # Add test pattern if specified
         if (![string]::IsNullOrWhiteSpace($TestPattern)) {
@@ -467,26 +467,49 @@ function Run-PlaywrightTests {
         $testCommand += " --output=test-results" 
         $testCommand += " --max-failures=10"  # Stop after 10 failures to save time
         
-        # Add verbose error reporting
-        $testCommand += " --reporter=html,line"  # Ensure we get detailed HTML report
+        # Add extra verbose flags for better live output
+        Write-Host "Adding verbose output flags for better real-time feedback..." -ForegroundColor Cyan
         
         Write-Host "Executing command: $testCommand"
-        Write-Host "Starting Playwright test execution with performance optimizations..."
+        Write-Host "Starting Playwright test execution with live output streaming..."
         
-        # Execute the tests with proper output capture
+        # Execute the tests with live output streaming
         try {
-            # Parse the command and arguments
-            $commandParts = $testCommand -split ' ', 2
-            $npxPath = "npx"
-            $arguments = if ($commandParts.Length -gt 1) { $commandParts[1] } else { "" }
+            Write-Host "Executing: $testCommand" -ForegroundColor Cyan
+            Write-Host "Working Directory: $playwrightPath" -ForegroundColor Cyan
+            Write-Host "============================================" -ForegroundColor Green
+            Write-Host "LIVE TEST OUTPUT:" -ForegroundColor Green
+            Write-Host "============================================" -ForegroundColor Green
             
-            Write-Host "Executing: $npxPath $arguments" -ForegroundColor Cyan
+            # Change to playwright directory for execution
+            Push-Location $playwrightPath
             
-            # Execute with Start-Process for better output capture
-            $processInfo = Start-Process -FilePath $npxPath -ArgumentList $arguments -WorkingDirectory $playwrightPath -Wait -PassThru -NoNewWindow
-            $testExitCode = $processInfo.ExitCode
+            # Execute with live output streaming using cmd /c
+            $testExitCode = 0
+            try {
+                # Method 1: Use cmd /c to properly handle npx and stream output
+                Write-Host "Using cmd /c method for live output streaming..." -ForegroundColor Gray
+                & cmd /c "$testCommand 2>&1"
+                $testExitCode = $LASTEXITCODE
+            } catch {
+                Write-Host "cmd /c method failed, trying alternative approach..." -ForegroundColor Yellow
+                try {
+                    # Method 2: Direct Invoke-Expression as fallback
+                    Write-Host "Using Invoke-Expression method as fallback..." -ForegroundColor Gray
+                    Invoke-Expression $testCommand
+                    $testExitCode = $LASTEXITCODE
+                } catch {
+                    Write-Host "Exception during test execution: $($_.Exception.Message)" -ForegroundColor Red
+                    $testExitCode = 1
+                }
+            }
             
+            # Return to previous location
+            Pop-Location
+            
+            Write-Host "============================================" -ForegroundColor $(if ($testExitCode -eq 0) { "Green" } else { "Red" })
             Write-Host "Test execution completed with exit code: $testExitCode" -ForegroundColor $(if ($testExitCode -eq 0) { "Green" } else { "Red" })
+            Write-Host "============================================" -ForegroundColor $(if ($testExitCode -eq 0) { "Green" } else { "Red" })
         } catch {
             Write-Error "Failed to execute Playwright tests: $($_.Exception.Message)"
             Write-Host "Error details: $($_.Exception)" -ForegroundColor Red
