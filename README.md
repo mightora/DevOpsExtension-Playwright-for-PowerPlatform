@@ -17,11 +17,11 @@ Built specifically for Power Platform applications, this extension handles the u
 - Pre-configured testing framework optimized for Power Platform applications
 - No manual environment preparation required
 
-### 🔧 **Flexible Repository Management** *(New in v1.0.15+)*
-- **Custom Repository Support**: Specify your own Playwright framework repository
-- **Branch/Tag Control**: Clone specific branches, tags, or commits for testing
+### 🔧 **Version Management** *(New in v1.0.15+)*
+- **Version Control**: Specify exact versions, branches, tags, or commits for testing
 - **Version Pinning**: Lock tests to specific framework versions for consistency
 - **Development Workflow**: Test against feature branches before production deployment
+- **Controlled Repository**: Uses curated Playwright framework for reliability
 
 ### 🎯 **Power Platform Optimized**
 - Native Office 365 authentication handling
@@ -80,15 +80,14 @@ Add the task to your Azure DevOps pipeline:
     o365Password: '$(TestUser.Password)'
 ```
 
-### Advanced Usage with Custom Repository *(New in v1.0.15)*
+### Advanced Usage with Version Control *(New in v1.0.15)*
 
 ```yaml
 - task: mightoria-playwrightForPowerPlatform@1
-  displayName: 'Run Tests with Custom Framework'
+  displayName: 'Run Tests with Specific Version'
   inputs:
     testLocation: '$(System.DefaultWorkingDirectory)/tests'
-    playwrightRepository: 'https://github.com/yourorg/custom-playwright-framework.git'
-    playwrightBranch: 'feature/enhanced-selectors'
+    playwrightVersion: 'v2.1.0'
     browser: 'chromium'
     trace: 'on-first-retry'
     outputLocation: '$(Agent.TempDirectory)/test-results'
@@ -103,8 +102,7 @@ Add the task to your Azure DevOps pipeline:
 | Parameter | Description | Required | Default |
 |-----------|-------------|----------|---------|
 | `testLocation` | Path to Playwright test files | Yes | `$(System.DefaultWorkingDirectory)/PlaywrightTests` |
-| `playwrightRepository` | Custom Playwright framework repository URL | No | `https://github.com/itweedie/playwrightOnPowerPlatform.git` |
-| `playwrightBranch` | Specific branch, tag, or commit to clone | No | *(default branch)* |
+| `playwrightVersion` | Specific version, branch, tag, or commit to use | No | *(latest default)* |
 | `browser` | Browser to run tests (chromium, firefox, webkit, all) | Yes | `all` |
 | `trace` | Trace mode (off, on, retain-on-failure, on-first-retry) | Yes | `off` |
 | `outputLocation` | Directory for test results and reports | Yes | `$(System.DefaultWorkingDirectory)` |
@@ -113,19 +111,19 @@ Add the task to your Azure DevOps pipeline:
 | `o365Username` | Office 365 username for authentication | No | - |
 | `o365Password` | Office 365 password for authentication | No | - |
 
-#### New Repository Management Parameters *(v1.0.15+)*
+#### Version Management Parameter *(v1.0.15+)*
 
-The `playwrightRepository` and `playwrightBranch` parameters provide flexibility for teams who:
-- Maintain custom Playwright framework configurations
-- Need to test against specific versions or feature branches
-- Want to use their own forks of the Playwright testing framework
-- Require version control over their testing infrastructure
+The `playwrightVersion` parameter provides flexibility for teams who need to:
+- Test against specific versions or feature branches
+- Pin to stable releases for consistent testing
+- Validate changes before they reach the main branch
 
 **Examples:**
-- Use feature branch: `playwrightBranch: "feature/new-selectors"`
-- Pin to specific version: `playwrightBranch: "v2.1.0"`
-- Test specific commit: `playwrightBranch: "abc123def456"`
-- Custom repository: `playwrightRepository: "https://github.com/yourorg/custom-playwright-framework.git"`
+- Use feature branch: `playwrightVersion: "feature/new-selectors"`
+- Pin to specific version: `playwrightVersion: "v2.1.0"`
+- Test specific commit: `playwrightVersion: "abc123def456"`
+
+*Note: The repository URL is fixed to ensure framework consistency and reliability.*
 
 ## Example Test Scenarios
 
@@ -176,15 +174,15 @@ test('Form Submission', async ({ page }) => {
 
 ## Release Notes
 
-### Version 1.0.15 - September 19, 2025 🎉
+### Version 1.1.0 - September 19, 2025 🎉
 
 **Major Improvements & Bug Fixes**
 
-#### 🔧 **Repository & Branch Management**
-- **NEW**: Added `playwrightRepository` input parameter to specify custom Playwright framework repositories
-- **NEW**: Added `playwrightBranch` input parameter to clone specific branches, tags, or commits
-- **ENHANCED**: Full control over which version of Playwright tests and framework gets executed
-- **USE CASE**: Teams can now maintain their own Playwright framework forks and test against feature branches
+#### 🔧 **Repository & Version Management**
+- **NEW**: Added `playwrightVersion` input parameter to specify versions, branches, tags, or commits
+- **ENHANCED**: Full control over which version of Playwright framework gets executed
+- **CONTROLLED**: Repository URL is fixed to ensure consistency and reliability across all users
+- **USE CASE**: Teams can test against specific versions and pin to stable releases
 
 #### 🛠️ **Command Execution Reliability**
 - **FIXED**: Resolved "Unknown command: 'pm'" error that occurred with npm/npx commands in certain CI/CD environments
@@ -210,8 +208,8 @@ test('Form Submission', async ({ page }) => {
 
 **Migration Notes:**
 - Existing pipelines will continue to work unchanged (default repository and branch behavior)
-- To use custom repositories: Add `playwrightRepository` parameter to your task configuration
-- To use specific branches: Add `playwrightBranch` parameter with your desired branch/tag/commit
+- To use specific branches: Add `playwrightVersion` parameter with your desired branch/tag/commit
+- Repository URL is now fixed for consistency - custom repositories are no longer supported
 
 **Breaking Changes:**
 - None - this release is fully backward compatible

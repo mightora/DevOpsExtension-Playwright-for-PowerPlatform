@@ -737,8 +737,7 @@ $appUrl = Get-VstsInput -Name 'appUrl'
 $appName = Get-VstsInput -Name 'appName'
 $o365Username = Get-VstsInput -Name 'o365Username'
 $o365Password = Get-VstsInput -Name 'o365Password'
-$playwrightRepository = Get-VstsInput -Name 'playwrightRepository'
-$playwrightBranch = Get-VstsInput -Name 'playwrightBranch'
+$playwrightVersion = Get-VstsInput -Name 'playwrightVersion'
 $branchName = Get-VstsInput -Name 'branchName'
 $tags = Get-VstsInput -Name 'tags'
 
@@ -798,11 +797,11 @@ Write-Host "==========================================================="
 Write-Host "==========================================================="
 Write-Host "Cloning Playwright repository..."
 
-# Use custom repository URL if provided, otherwise use default
-$repositoryUrl = if (![string]::IsNullOrWhiteSpace($playwrightRepository)) { $playwrightRepository } else { "https://github.com/itweedie/playwrightOnPowerPlatform.git" }
+# Use hardcoded default repository URL
+$repositoryUrl = "https://github.com/itweedie/playwrightOnPowerPlatform.git"
 
-# Call function with branch parameter
-Clone-PlaywrightRepository -RepositoryUrl $repositoryUrl -Branch $playwrightBranch
+# Call function with version parameter
+Clone-PlaywrightRepository -RepositoryUrl $repositoryUrl -Branch $playwrightVersion
 
 Write-Host "==========================================================="
 
