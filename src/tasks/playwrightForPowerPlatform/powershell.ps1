@@ -1,13 +1,13 @@
 <#
     ===========================================================
-    Task: Mightora Playwright for Power Platform
+    Task: Mightora Commit To Git Repository
     
     Originally Created By: Ian Tweedie [https://iantweedie.biz] (Date: 2024-10-08)
     Date: 2024-10-08
 
     Contributors:
-    - Enhanced with live output streaming and JUnit XML integration
-    - Improved error handling and troubleshooting capabilities
+    - Developer A (Contributions: Improved Git configuration handling)
+    - Developer B (Contributions: Added support for custom commit messages)
     
     ===========================================================
 #>
@@ -456,7 +456,7 @@ function Run-PlaywrightTests {
         
         # Add performance optimizations for CI/CD
         $testCommand += " --workers=2"  # Limit workers to prevent resource exhaustion
-        $testCommand += " --reporter=list,html,junit"  # Use list for live output, HTML for detailed report, JUnit for Azure DevOps integration
+        #$testCommand += " --reporter=line"  # Use faster line reporter
         
         # Add test pattern if specified
         if (![string]::IsNullOrWhiteSpace($TestPattern)) {
@@ -467,80 +467,18 @@ function Run-PlaywrightTests {
         $testCommand += " --output=test-results" 
         $testCommand += " --max-failures=10"  # Stop after 10 failures to save time
         
-        # Add extra verbose flags for better live output
-        Write-Host "Adding verbose output flags for better real-time feedback..." -ForegroundColor Cyan
-        Write-Host "✅ JUnit XML output enabled for Azure DevOps test result integration" -ForegroundColor Green
-        
         Write-Host "Executing command: $testCommand"
-        Write-Host "Starting Playwright test execution with live output streaming..."
+        Write-Host "Starting Playwright test execution with performance optimizations..."
         
-        # Execute the tests with live output streaming
-        try {
-            Write-Host "Executing: $testCommand" -ForegroundColor Cyan
-            Write-Host "Working Directory: $playwrightPath" -ForegroundColor Cyan
-            Write-Host "============================================" -ForegroundColor Green
-            Write-Host "TEST OUTPUT:" -ForegroundColor Green
-            Write-Host "============================================" -ForegroundColor Green
-            
-            # Change to playwright directory for execution
-            Push-Location $playwrightPath
-            
-            # Execute with live output streaming using PowerShell
-            $testExitCode = 0
-            try {
-                # Method 1: Use PowerShell's native execution with proper output streaming
-                Write-Host "Using PowerShell native execution for live output streaming..." -ForegroundColor Gray
-                Invoke-Expression $testCommand
-                $testExitCode = $LASTEXITCODE
-            } catch {
-                Write-Host "PowerShell execution failed, trying Start-Process method..." -ForegroundColor Yellow
-                try {
-                    # Method 2: Start-Process as fallback for better control
-                    Write-Host "Using Start-Process method as fallback..." -ForegroundColor Gray
-                    $commandParts = $testCommand -split ' ', 2
-                    $npxPath = "npx"
-                    $arguments = if ($commandParts.Length -gt 1) { $commandParts[1] } else { "" }
-                    
-                    $processInfo = Start-Process -FilePath $npxPath -ArgumentList $arguments -WorkingDirectory $playwrightPath -Wait -PassThru -NoNewWindow
-                    $testExitCode = $processInfo.ExitCode
-                } catch {
-                    Write-Host "Exception during test execution: $($_.Exception.Message)" -ForegroundColor Red
-                    $testExitCode = 1
-                }
-            }
-            
-            # Return to previous location
-            Pop-Location
-
-            # Use a simple variable for color to avoid nested expressions inside the Write-Host call
-            $summaryColor = if ($testExitCode -eq 0) { 'Green' } else { 'Red' }
-            Write-Host "============================================" -ForegroundColor $summaryColor
-            Write-Host "Test execution completed with exit code: $testExitCode" -ForegroundColor $summaryColor
-            Write-Host "============================================" -ForegroundColor $summaryColor
-        } catch {
-            Write-Error "Failed to execute Playwright tests: $($_.Exception.Message)"
-            Write-Host "Error details: $($_.Exception)" -ForegroundColor Red
-            $testExitCode = 1
-        }
+        # Execute the tests
+        Invoke-Expression $testCommand
+        
+        $testExitCode = $LASTEXITCODE
         
         if ($testExitCode -eq 0) {
             Write-Host "All Playwright tests passed successfully!" -ForegroundColor Green
         } else {
             Write-Warning "Some Playwright tests failed or encountered issues (Exit Code: $testExitCode)"
-            
-            # First, try to run a quick test status check to get immediate feedback
-            Write-Host "============================================" -ForegroundColor Yellow
-            Write-Host "QUICK PLAYWRIGHT STATUS CHECK" -ForegroundColor Yellow
-            Write-Host "============================================" -ForegroundColor Yellow
-            
-            try {
-                Write-Host "Running playwright list to check test discovery..." -ForegroundColor Cyan
-                $listProcess = Start-Process -FilePath "npx" -ArgumentList "playwright test --list" -WorkingDirectory $playwrightPath -Wait -PassThru -NoNewWindow
-                $listColor = if ($listProcess.ExitCode -eq 0) { 'Green' } else { 'Red' }
-                Write-Host "Test list exit code: $($listProcess.ExitCode)" -ForegroundColor $listColor
-            } catch {
-                Write-Host "Could not run test list check: $($_.Exception.Message)" -ForegroundColor Red
-            }
             
             # Provide detailed failure analysis
             Write-Host "============================================" -ForegroundColor Red
@@ -550,37 +488,12 @@ function Run-PlaywrightTests {
             # Check if test results exist and analyze them
             $resultsPath = Join-Path $playwrightPath "test-results"
             if (Test-Path $resultsPath) {
-                Write-Host "Test results available at: $resultsPath" -ForegroundColor Green
-                
-                # Count and display test result folders
-                $testResultFolders = Get-ChildItem -Path $resultsPath -Directory -ErrorAction SilentlyContinue
-                if ($testResultFolders) {
-                    Write-Host "Found $($testResultFolders.Count) test result folders:" -ForegroundColor Cyan
-                    $testResultFolders | ForEach-Object { 
-                        Write-Host "  - $($_.Name)" -ForegroundColor Cyan
-                        
-                        # Check for error artifacts in each folder
-                        $errorFiles = Get-ChildItem -Path $_.FullName -Recurse -Include "*.txt", "*.log", "*.err" -ErrorAction SilentlyContinue
-                        if ($errorFiles) {
-                            $errorFiles | Select-Object -First 3 | ForEach-Object {
-                                Write-Host "    Error file: $($_.Name)" -ForegroundColor Red
-                                try {
-                                    $errorContent = Get-Content $_.FullName -Head 10 -ErrorAction SilentlyContinue
-                                    if ($errorContent) {
-                                        $errorContent | ForEach-Object { Write-Host "      $_" -ForegroundColor Red }
-                                    }
-                                } catch {
-                                    Write-Host "      Could not read error file" -ForegroundColor Red
-                                }
-                            }
-                        }
-                    }
-                }
+                Write-Host "Test results available at: $resultsPath"
                 
                 # Look for JSON results files for detailed error information
                 $jsonResults = Get-ChildItem -Path $resultsPath -Recurse -Filter "*.json" -ErrorAction SilentlyContinue
                 if ($jsonResults) {
-                    Write-Host "Found $($jsonResults.Count) JSON result files:" -ForegroundColor Yellow
+                    Write-Host "Found JSON result files:" -ForegroundColor Yellow
                     foreach ($jsonFile in $jsonResults | Select-Object -First 5) {
                         Write-Host "  - $($jsonFile.FullName)" -ForegroundColor Yellow
                         try {
@@ -589,14 +502,8 @@ function Run-PlaywrightTests {
                                 Write-Host "    Errors found in $($jsonFile.Name):" -ForegroundColor Red
                                 $content.errors | ForEach-Object { Write-Host "      - $_" -ForegroundColor Red }
                             }
-                            if ($content.message) {
-                                Write-Host "    Message: $($content.message)" -ForegroundColor Yellow
-                            }
-                            if ($content.stack) {
-                                Write-Host "    Stack trace available in file" -ForegroundColor Gray
-                            }
                         } catch {
-                            Write-Host "    Could not parse JSON file: $($jsonFile.Name)" -ForegroundColor Red
+                            Write-Host "    Could not parse JSON file: $($jsonFile.Name)"
                         }
                     }
                 }
@@ -655,29 +562,6 @@ function Run-PlaywrightTests {
                         Write-Host "    Could not read log file: $($_.Name)"
                     }
                 }
-            }
-            
-            # Try to run a single test with maximum verbosity for detailed error output
-            Write-Host "============================================" -ForegroundColor Cyan
-            Write-Host "ATTEMPTING VERBOSE SINGLE TEST EXECUTION" -ForegroundColor Cyan
-            Write-Host "============================================" -ForegroundColor Cyan
-            
-            try {
-                # Find the first test file to run with verbose output
-                $testFiles = Get-ChildItem -Path $testsPath -Recurse -File -Include "*.spec.js", "*.spec.ts", "*.test.js", "*.test.ts" | Select-Object -First 1
-                if ($testFiles) {
-                    $verboseCommand = "npx playwright test '$($testFiles.FullName)' --reporter=line --headed=false --workers=1 --timeout=30000"
-                    Write-Host "Running single test with verbose output: $($testFiles.Name)" -ForegroundColor Cyan
-                    Write-Host "Command: $verboseCommand" -ForegroundColor Gray
-                    
-                    $verboseProcess = Start-Process -FilePath "npx" -ArgumentList "playwright", "test", $testFiles.FullName, "--reporter=line", "--headed=false", "--workers=1", "--timeout=30000" -WorkingDirectory $playwrightPath -Wait -PassThru -NoNewWindow
-                    $verboseColor = if ($verboseProcess.ExitCode -eq 0) { 'Green' } else { 'Red' }
-                    Write-Host "Verbose test exit code: $($verboseProcess.ExitCode)" -ForegroundColor $verboseColor
-                } else {
-                    Write-Host "No test files found for verbose execution" -ForegroundColor Red
-                }
-            } catch {
-                Write-Host "Could not run verbose test: $($_.Exception.Message)" -ForegroundColor Red
             }
             
             # Provide troubleshooting suggestions
@@ -759,11 +643,30 @@ function Copy-TestResultsToOutput {
                     Remove-Item -Path $destTestResults -Recurse -Force
                 }
                 
+                # Ensure parent directory exists and create the full path
+                $destParent = Split-Path $destTestResults -Parent
+                if (!(Test-Path $destParent)) {
+                    Write-Host "Creating parent directory: $destParent"
+                    New-Item -Path $destParent -ItemType Directory -Force | Out-Null
+                }
+                
                 # Copy the entire folder structure
+                Write-Host "Copying test-results folder structure..."
                 Copy-Item -Path $sourceTestResults -Destination $OutputLocation -Recurse -Force
                 Write-Host "Successfully copied test-results folder"
             } catch {
                 Write-Warning "Failed to copy test-results folder: $($_.Exception.Message)"
+                Write-Host "Attempting alternative copy method..."
+                try {
+                    # Alternative method: Create destination first, then copy contents
+                    if (!(Test-Path $destTestResults)) {
+                        New-Item -Path $destTestResults -ItemType Directory -Force | Out-Null
+                    }
+                    Copy-Item -Path "$sourceTestResults\*" -Destination $destTestResults -Recurse -Force
+                    Write-Host "Successfully copied test-results using alternative method"
+                } catch {
+                    Write-Error "Failed to copy test-results with both methods: $($_.Exception.Message)"
+                }
             }
         } else {
             Write-Warning "No test-results folder found at: $sourceTestResults"
@@ -781,52 +684,45 @@ function Copy-TestResultsToOutput {
                     Remove-Item -Path $destReports -Recurse -Force
                 }
                 
+                # Ensure parent directory exists and create the full path
+                $destParent = Split-Path $destReports -Parent
+                if (!(Test-Path $destParent)) {
+                    Write-Host "Creating parent directory: $destParent"
+                    New-Item -Path $destParent -ItemType Directory -Force | Out-Null
+                }
+                
                 # Copy the entire folder structure
+                Write-Host "Copying playwright-report folder structure..."
                 Copy-Item -Path $sourceReports -Destination $OutputLocation -Recurse -Force
                 Write-Host "Successfully copied playwright-report folder"
             } catch {
                 Write-Warning "Failed to copy playwright-report folder: $($_.Exception.Message)"
+                Write-Host "Attempting alternative copy method..."
+                try {
+                    # Alternative method: Create destination first, then copy contents
+                    if (!(Test-Path $destReports)) {
+                        New-Item -Path $destReports -ItemType Directory -Force | Out-Null
+                    }
+                    Copy-Item -Path "$sourceReports\*" -Destination $destReports -Recurse -Force
+                    Write-Host "Successfully copied playwright-report using alternative method"
+                } catch {
+                    Write-Error "Failed to copy playwright-report with both methods: $($_.Exception.Message)"
+                }
             }
         } else {
             Write-Warning "No playwright-report folder found at: $sourceReports"
-        }
-        
-        # Copy JUnit XML files for Azure DevOps integration
-        $junitFiles = Get-ChildItem -Path $playwrightPath -Filter "results.xml" -ErrorAction SilentlyContinue
-        if (-not $junitFiles) {
-            $junitFiles = Get-ChildItem -Path $playwrightPath -Filter "junit.xml" -ErrorAction SilentlyContinue
-        }
-        if (-not $junitFiles) {
-            $junitFiles = Get-ChildItem -Path $playwrightPath -Filter "*.xml" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "(test|junit|results)" }
-        }
-        
-        if ($junitFiles) {
-            Write-Host "Found JUnit XML files for Azure DevOps integration:" -ForegroundColor Green
-            foreach ($junitFile in $junitFiles) {
-                Write-Host "  - $($junitFile.Name)" -ForegroundColor Green
-                try {
-                    $destJUnitFile = Join-Path $OutputLocation $junitFile.Name
-                    Copy-Item -Path $junitFile.FullName -Destination $destJUnitFile -Force
-                    Write-Host "    Copied to: $destJUnitFile" -ForegroundColor Green
-                } catch {
-                    Write-Warning "Failed to copy JUnit file $($junitFile.Name): $($_.Exception.Message)"
-                }
-            }
-            Write-Host "JUnit XML files available for Azure DevOps test result publishing" -ForegroundColor Green
-        } else {
-            Write-Host "No JUnit XML files found - results available in HTML format only" -ForegroundColor Yellow
         }
         
         # Summary
         Write-Host "Test results and reports copy operation completed"
         Write-Host "Output location: $OutputLocation"
         
+        
     } catch {
         Write-Error "Failed to copy test results and reports: $($_.Exception.Message)"
         throw
     }
 }
-
 
 # Display the developer message
 $developerMessage = Fetch-DeveloperMessage
@@ -841,7 +737,8 @@ $appUrl = Get-VstsInput -Name 'appUrl'
 $appName = Get-VstsInput -Name 'appName'
 $o365Username = Get-VstsInput -Name 'o365Username'
 $o365Password = Get-VstsInput -Name 'o365Password'
-$playwrightVersion = Get-VstsInput -Name 'playwrightVersion'
+$playwrightRepository = Get-VstsInput -Name 'playwrightRepository'
+$playwrightBranch = Get-VstsInput -Name 'playwrightBranch'
 $branchName = Get-VstsInput -Name 'branchName'
 $tags = Get-VstsInput -Name 'tags'
 
@@ -901,11 +798,11 @@ Write-Host "==========================================================="
 Write-Host "==========================================================="
 Write-Host "Cloning Playwright repository..."
 
-# Use hardcoded default repository URL
-$repositoryUrl = "https://github.com/itweedie/playwrightOnPowerPlatform.git"
+# Use custom repository URL if provided, otherwise use default
+$repositoryUrl = if (![string]::IsNullOrWhiteSpace($playwrightRepository)) { $playwrightRepository } else { "https://github.com/itweedie/playwrightOnPowerPlatform.git" }
 
-# Call function with version parameter
-Clone-PlaywrightRepository -RepositoryUrl $repositoryUrl -Branch $playwrightVersion
+# Call function with branch parameter
+Clone-PlaywrightRepository -RepositoryUrl $repositoryUrl -Branch $playwrightBranch
 
 Write-Host "==========================================================="
 
@@ -931,11 +828,14 @@ Write-Host "==========================================================="
 Write-Host "==========================================================="
 Write-Host "Copying test results and reports to output location..."
 Copy-TestResultsToOutput -OutputLocation $outputLocation
-Write-Host "====================================================================="
+Write-Host "==========================================================="
 
-Write-Host "====================================================================="
+
+# Output the script information at runtime
+Write-Host "==========================================================="
 Write-Host "Task: Mightora Playwright for Power Platform"
-Write-Host "Originally Created By: Ian Tweedie [https://iantweedie.biz] (Date: 2024-10-08)"
-Write-Host "Contributors: Enhanced with live output and JUnit XML integration"
-Write-Host "====================================================================="
-
+Write-Host "Originally Created By: Ian Tweedie [https://iantweedie.biz] (Date: 2025-05-25)"
+Write-Host "Contributors:"
+#Write-Host " - Developer A (Contributions: Improved Git configuration handling)"
+#Write-Host " - Developer B (Contributions: Added support for custom commit messages)"
+Write-Host "==========================================================="
