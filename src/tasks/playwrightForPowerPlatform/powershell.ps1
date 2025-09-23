@@ -456,7 +456,7 @@ function Run-PlaywrightTests {
         
         # Add performance optimizations for CI/CD
         $testCommand += " --workers=2"  # Limit workers to prevent resource exhaustion
-        #$testCommand += " --reporter=line"  # Use faster line reporter
+        $testCommand += " --reporter=html,line"  # Use both HTML and line reporters for better output
         
         # Add test pattern if specified
         if (![string]::IsNullOrWhiteSpace($TestPattern)) {
@@ -467,18 +467,49 @@ function Run-PlaywrightTests {
         $testCommand += " --output=test-results" 
         $testCommand += " --max-failures=10"  # Stop after 10 failures to save time
         
+        # Add verbose error reporting
+        $testCommand += " --reporter=html,line"  # Ensure we get detailed HTML report
+        
         Write-Host "Executing command: $testCommand"
         Write-Host "Starting Playwright test execution with performance optimizations..."
         
-        # Execute the tests
-        Invoke-Expression $testCommand
-        
-        $testExitCode = $LASTEXITCODE
+        # Execute the tests with proper output capture
+        try {
+            # Parse the command and arguments
+            $commandParts = $testCommand -split ' ', 2
+            $npxPath = "npx"
+            $arguments = if ($commandParts.Length -gt 1) { $commandParts[1] } else { "" }
+            
+            Write-Host "Executing: $npxPath $arguments" -ForegroundColor Cyan
+            
+            # Execute with Start-Process for better output capture
+            $processInfo = Start-Process -FilePath $npxPath -ArgumentList $arguments -WorkingDirectory $playwrightPath -Wait -PassThru -NoNewWindow
+            $testExitCode = $processInfo.ExitCode
+            
+            Write-Host "Test execution completed with exit code: $testExitCode" -ForegroundColor $(if ($testExitCode -eq 0) { "Green" } else { "Red" })
+        } catch {
+            Write-Error "Failed to execute Playwright tests: $($_.Exception.Message)"
+            Write-Host "Error details: $($_.Exception)" -ForegroundColor Red
+            $testExitCode = 1
+        }
         
         if ($testExitCode -eq 0) {
             Write-Host "All Playwright tests passed successfully!" -ForegroundColor Green
         } else {
             Write-Warning "Some Playwright tests failed or encountered issues (Exit Code: $testExitCode)"
+            
+            # First, try to run a quick test status check to get immediate feedback
+            Write-Host "============================================" -ForegroundColor Yellow
+            Write-Host "QUICK PLAYWRIGHT STATUS CHECK" -ForegroundColor Yellow
+            Write-Host "============================================" -ForegroundColor Yellow
+            
+            try {
+                Write-Host "Running playwright list to check test discovery..." -ForegroundColor Cyan
+                $listProcess = Start-Process -FilePath "npx" -ArgumentList "playwright test --list" -WorkingDirectory $playwrightPath -Wait -PassThru -NoNewWindow
+                Write-Host "Test list exit code: $($listProcess.ExitCode)" -ForegroundColor $(if ($listProcess.ExitCode -eq 0) { "Green" } else { "Red" })
+            } catch {
+                Write-Host "Could not run test list check: $($_.Exception.Message)" -ForegroundColor Red
+            }
             
             # Provide detailed failure analysis
             Write-Host "============================================" -ForegroundColor Red
@@ -488,12 +519,37 @@ function Run-PlaywrightTests {
             # Check if test results exist and analyze them
             $resultsPath = Join-Path $playwrightPath "test-results"
             if (Test-Path $resultsPath) {
-                Write-Host "Test results available at: $resultsPath"
+                Write-Host "Test results available at: $resultsPath" -ForegroundColor Green
+                
+                # Count and display test result folders
+                $testResultFolders = Get-ChildItem -Path $resultsPath -Directory -ErrorAction SilentlyContinue
+                if ($testResultFolders) {
+                    Write-Host "Found $($testResultFolders.Count) test result folders:" -ForegroundColor Cyan
+                    $testResultFolders | ForEach-Object { 
+                        Write-Host "  - $($_.Name)" -ForegroundColor Cyan
+                        
+                        # Check for error artifacts in each folder
+                        $errorFiles = Get-ChildItem -Path $_.FullName -Recurse -Include "*.txt", "*.log", "*.err" -ErrorAction SilentlyContinue
+                        if ($errorFiles) {
+                            $errorFiles | Select-Object -First 3 | ForEach-Object {
+                                Write-Host "    Error file: $($_.Name)" -ForegroundColor Red
+                                try {
+                                    $errorContent = Get-Content $_.FullName -Head 10 -ErrorAction SilentlyContinue
+                                    if ($errorContent) {
+                                        $errorContent | ForEach-Object { Write-Host "      $_" -ForegroundColor Red }
+                                    }
+                                } catch {
+                                    Write-Host "      Could not read error file" -ForegroundColor Red
+                                }
+                            }
+                        }
+                    }
+                }
                 
                 # Look for JSON results files for detailed error information
                 $jsonResults = Get-ChildItem -Path $resultsPath -Recurse -Filter "*.json" -ErrorAction SilentlyContinue
                 if ($jsonResults) {
-                    Write-Host "Found JSON result files:" -ForegroundColor Yellow
+                    Write-Host "Found $($jsonResults.Count) JSON result files:" -ForegroundColor Yellow
                     foreach ($jsonFile in $jsonResults | Select-Object -First 5) {
                         Write-Host "  - $($jsonFile.FullName)" -ForegroundColor Yellow
                         try {
@@ -502,8 +558,14 @@ function Run-PlaywrightTests {
                                 Write-Host "    Errors found in $($jsonFile.Name):" -ForegroundColor Red
                                 $content.errors | ForEach-Object { Write-Host "      - $_" -ForegroundColor Red }
                             }
+                            if ($content.message) {
+                                Write-Host "    Message: $($content.message)" -ForegroundColor Yellow
+                            }
+                            if ($content.stack) {
+                                Write-Host "    Stack trace available in file" -ForegroundColor Gray
+                            }
                         } catch {
-                            Write-Host "    Could not parse JSON file: $($jsonFile.Name)"
+                            Write-Host "    Could not parse JSON file: $($jsonFile.Name)" -ForegroundColor Red
                         }
                     }
                 }
@@ -562,6 +624,28 @@ function Run-PlaywrightTests {
                         Write-Host "    Could not read log file: $($_.Name)"
                     }
                 }
+            }
+            
+            # Try to run a single test with maximum verbosity for detailed error output
+            Write-Host "============================================" -ForegroundColor Cyan
+            Write-Host "ATTEMPTING VERBOSE SINGLE TEST EXECUTION" -ForegroundColor Cyan
+            Write-Host "============================================" -ForegroundColor Cyan
+            
+            try {
+                # Find the first test file to run with verbose output
+                $testFiles = Get-ChildItem -Path $testsPath -Recurse -File -Include "*.spec.js", "*.spec.ts", "*.test.js", "*.test.ts" | Select-Object -First 1
+                if ($testFiles) {
+                    $verboseCommand = "npx playwright test '$($testFiles.FullName)' --reporter=line --headed=false --workers=1 --timeout=30000"
+                    Write-Host "Running single test with verbose output: $($testFiles.Name)" -ForegroundColor Cyan
+                    Write-Host "Command: $verboseCommand" -ForegroundColor Gray
+                    
+                    $verboseProcess = Start-Process -FilePath "npx" -ArgumentList "playwright", "test", $testFiles.FullName, "--reporter=line", "--headed=false", "--workers=1", "--timeout=30000" -WorkingDirectory $playwrightPath -Wait -PassThru -NoNewWindow
+                    Write-Host "Verbose test exit code: $($verboseProcess.ExitCode)" -ForegroundColor $(if ($verboseProcess.ExitCode -eq 0) { "Green" } else { "Red" })
+                } else {
+                    Write-Host "No test files found for verbose execution" -ForegroundColor Red
+                }
+            } catch {
+                Write-Host "Could not run verbose test: $($_.Exception.Message)" -ForegroundColor Red
             }
             
             # Provide troubleshooting suggestions

@@ -1526,7 +1526,7 @@ function Run-PlaywrightTests {
         
         # Add performance optimizations for CI/CD
         $testCommand += " --workers=2"  # Limit workers to prevent resource exhaustion
-        #$testCommand += " --reporter=line"  # Use faster line reporter
+        $testCommand += " --reporter=html,line"  # Use both HTML and line reporters for better output
         
         # Add test pattern if specified
         if (![string]::IsNullOrWhiteSpace($TestPattern)) {
@@ -1537,13 +1537,31 @@ function Run-PlaywrightTests {
         $testCommand += " --output=test-results" 
         $testCommand += " --max-failures=10"  # Stop after 10 failures to save time
         
+        # Add verbose error reporting
+        $testCommand += " --reporter=html,line"  # Ensure we get detailed HTML report
+        
         Write-Host "Executing command: $testCommand"
         Write-Host "Starting Playwright test execution with performance optimizations..."
         
-        # Execute the tests
-        Invoke-Expression $testCommand
-        
-        $testExitCode = $LASTEXITCODE
+        # Execute the tests with proper output capture
+        try {
+            # Parse the command and arguments
+            $commandParts = $testCommand -split ' ', 2
+            $npxPath = "npx"
+            $arguments = if ($commandParts.Length -gt 1) { $commandParts[1] } else { "" }
+            
+            Write-Host "Executing: $npxPath $arguments" -ForegroundColor Cyan
+            
+            # Execute with Start-Process for better output capture
+            $processInfo = Start-Process -FilePath $npxPath -ArgumentList $arguments -WorkingDirectory $playwrightPath -Wait -PassThru -NoNewWindow
+            $testExitCode = $processInfo.ExitCode
+            
+            Write-Host "Test execution completed with exit code: $testExitCode" -ForegroundColor $(if ($testExitCode -eq 0) { "Green" } else { "Red" })
+        } catch {
+            Write-Error "Failed to execute Playwright tests: $($_.Exception.Message)"
+            Write-Host "Error details: $($_.Exception)" -ForegroundColor Red
+            $testExitCode = 1
+        }
         
         if ($testExitCode -eq 0) {
             Write-Host "All Playwright tests passed successfully!" -ForegroundColor Green
