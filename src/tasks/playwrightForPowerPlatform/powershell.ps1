@@ -859,7 +859,6 @@ function Copy-TestResultsToOutput {
         Write-Host "Test results and reports copy operation completed"
         Write-Host "Output location: $OutputLocation"
         
-        
     } catch {
         Write-Error "Failed to copy test results and reports: $($_.Exception.Message)"
         throw
