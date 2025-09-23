@@ -456,7 +456,7 @@ function Run-PlaywrightTests {
         
         # Add performance optimizations for CI/CD
         $testCommand += " --workers=2"  # Limit workers to prevent resource exhaustion
-        $testCommand += " --reporter=list,html"  # Use list reporter for live output and HTML for detailed report
+        $testCommand += " --reporter=list,html,junit"  # Use list for live output, HTML for detailed report, JUnit for Azure DevOps integration
         
         # Add test pattern if specified
         if (![string]::IsNullOrWhiteSpace($TestPattern)) {
@@ -469,6 +469,7 @@ function Run-PlaywrightTests {
         
         # Add extra verbose flags for better live output
         Write-Host "Adding verbose output flags for better real-time feedback..." -ForegroundColor Cyan
+        Write-Host "✅ JUnit XML output enabled for Azure DevOps test result integration" -ForegroundColor Green
         
         Write-Host "Executing command: $testCommand"
         Write-Host "Starting Playwright test execution with live output streaming..."
@@ -478,26 +479,30 @@ function Run-PlaywrightTests {
             Write-Host "Executing: $testCommand" -ForegroundColor Cyan
             Write-Host "Working Directory: $playwrightPath" -ForegroundColor Cyan
             Write-Host "============================================" -ForegroundColor Green
-            Write-Host "LIVE TEST OUTPUT:" -ForegroundColor Green
+            Write-Host "TEST OUTPUT:" -ForegroundColor Green
             Write-Host "============================================" -ForegroundColor Green
             
             # Change to playwright directory for execution
             Push-Location $playwrightPath
             
-            # Execute with live output streaming using cmd /c
+            # Execute with live output streaming using PowerShell
             $testExitCode = 0
             try {
-                # Method 1: Use cmd /c to properly handle npx and stream output
-                Write-Host "Using cmd /c method for live output streaming..." -ForegroundColor Gray
-                & cmd /c "$testCommand 2>&1"
+                # Method 1: Use PowerShell's native execution with proper output streaming
+                Write-Host "Using PowerShell native execution for live output streaming..." -ForegroundColor Gray
+                Invoke-Expression $testCommand
                 $testExitCode = $LASTEXITCODE
             } catch {
-                Write-Host "cmd /c method failed, trying alternative approach..." -ForegroundColor Yellow
+                Write-Host "PowerShell execution failed, trying Start-Process method..." -ForegroundColor Yellow
                 try {
-                    # Method 2: Direct Invoke-Expression as fallback
-                    Write-Host "Using Invoke-Expression method as fallback..." -ForegroundColor Gray
-                    Invoke-Expression $testCommand
-                    $testExitCode = $LASTEXITCODE
+                    # Method 2: Start-Process as fallback for better control
+                    Write-Host "Using Start-Process method as fallback..." -ForegroundColor Gray
+                    $commandParts = $testCommand -split ' ', 2
+                    $npxPath = "npx"
+                    $arguments = if ($commandParts.Length -gt 1) { $commandParts[1] } else { "" }
+                    
+                    $processInfo = Start-Process -FilePath $npxPath -ArgumentList $arguments -WorkingDirectory $playwrightPath -Wait -PassThru -NoNewWindow
+                    $testExitCode = $processInfo.ExitCode
                 } catch {
                     Write-Host "Exception during test execution: $($_.Exception.Message)" -ForegroundColor Red
                     $testExitCode = 1
@@ -818,6 +823,32 @@ function Copy-TestResultsToOutput {
             }
         } else {
             Write-Warning "No playwright-report folder found at: $sourceReports"
+        }
+        
+        # Copy JUnit XML files for Azure DevOps integration
+        $junitFiles = Get-ChildItem -Path $playwrightPath -Filter "results.xml" -ErrorAction SilentlyContinue
+        if (-not $junitFiles) {
+            $junitFiles = Get-ChildItem -Path $playwrightPath -Filter "junit.xml" -ErrorAction SilentlyContinue
+        }
+        if (-not $junitFiles) {
+            $junitFiles = Get-ChildItem -Path $playwrightPath -Filter "*.xml" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "(test|junit|results)" }
+        }
+        
+        if ($junitFiles) {
+            Write-Host "Found JUnit XML files for Azure DevOps integration:" -ForegroundColor Green
+            foreach ($junitFile in $junitFiles) {
+                Write-Host "  - $($junitFile.Name)" -ForegroundColor Green
+                try {
+                    $destJUnitFile = Join-Path $OutputLocation $junitFile.Name
+                    Copy-Item -Path $junitFile.FullName -Destination $destJUnitFile -Force
+                    Write-Host "    Copied to: $destJUnitFile" -ForegroundColor Green
+                } catch {
+                    Write-Warning "Failed to copy JUnit file $($junitFile.Name): $($_.Exception.Message)"
+                }
+            }
+            Write-Host "✅ JUnit XML files available for Azure DevOps test result publishing" -ForegroundColor Green
+        } else {
+            Write-Host "ℹ️  No JUnit XML files found - results available in HTML format only" -ForegroundColor Yellow
         }
         
         # Summary
