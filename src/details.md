@@ -6,6 +6,15 @@ Revolutionize your Power Platform testing with automated end-to-end testing usin
 
 **⚠️ Important: This extension requires Windows runners and is only compatible with Windows-based Azure DevOps pipeline agents.**
 
+**⚠️ Important: You MUST specify a Node.js version for your pipeline using the `NodeTool` task. Add the following task to your pipeline before the Playwright for Power Platform task:**
+
+```yaml
+- task: NodeTool@0
+  inputs:
+    versionSource: 'spec'
+    versionSpec: '20.19.5'
+```
+
 **Created by:**
 
 [![Mightora Logo](https://raw.githubusercontent.com/TechTweedie/techtweedie.github.io/main/static/logo-01_150x150.png)](https://techtweedie.github.io) 
