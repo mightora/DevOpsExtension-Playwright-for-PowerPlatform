@@ -1197,7 +1197,7 @@ function Install-NodeJS {
 # Clone Playwright repository
 function Clone-PlaywrightRepository {
     param(
-        [string]$RepositoryUrl = "https://github.com/mightora/DevOpsExtension-Playwright-for-PowerPlatform.git",
+        [string]$RepositoryUrl = "https://github.com/mightora/playwrightOnPowerPlatform.git",
         [string]$TargetFolder = "playwright"
     )
     

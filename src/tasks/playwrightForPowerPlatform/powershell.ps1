@@ -127,7 +127,7 @@ function Install-NodeJS {
 # Clone Playwright repository
 function Clone-PlaywrightRepository {
     param(
-        [string]$RepositoryUrl = "https://github.com/mightora/DevOpsExtension-Playwright-for-PowerPlatform.git",
+        [string]$RepositoryUrl = "https://github.com/mightora/playwrightOnPowerPlatform.git",
         [string]$TargetFolder = "playwright",
         [string]$Branch = ""  # Optional branch/tag/commit to clone
     )
@@ -799,7 +799,7 @@ Write-Host "==========================================================="
 Write-Host "Cloning Playwright repository..."
 
 # Use custom repository URL if provided, otherwise use default
-$repositoryUrl = if (![string]::IsNullOrWhiteSpace($playwrightRepository)) { $playwrightRepository } else { "https://github.com/mightora/DevOpsExtension-Playwright-for-PowerPlatform.git" }
+$repositoryUrl = if (![string]::IsNullOrWhiteSpace($playwrightRepository)) { $playwrightRepository } else { "https://github.com/mightora/playwrightOnPowerPlatform.git" }
 
 # Call function with branch parameter
 Clone-PlaywrightRepository -RepositoryUrl $repositoryUrl -Branch $playwrightBranch
