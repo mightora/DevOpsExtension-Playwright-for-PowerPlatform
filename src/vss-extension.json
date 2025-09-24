@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "mightora-playwright-for-power-platform",
     "name": "Playwright for Power Platform",
-    "version": "1.1.1",
+    "version": "1.1.62",
     "publisher": "mightoraio",
     "galleryFlags": [
         "Public",
