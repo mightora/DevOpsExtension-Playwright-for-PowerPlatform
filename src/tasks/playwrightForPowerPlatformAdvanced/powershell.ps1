@@ -1198,8 +1198,7 @@ function Install-NodeJS {
 function Clone-PlaywrightRepository {
     param(
         [string]$RepositoryUrl = "https://github.com/itweedie/playwrightOnPowerPlatform.git",
-        [string]$TargetFolder = "playwright",
-        [string]$Branch = ""  # Optional branch/tag/commit to clone
+        [string]$TargetFolder = "playwright"
     )
     
     Write-Host "Cloning Playwright repository..."
@@ -1228,13 +1227,7 @@ function Clone-PlaywrightRepository {
         Write-Host "Cloning repository from: $RepositoryUrl"
         Write-Host "Target folder: $playwrightPath"
         
-        if (![string]::IsNullOrWhiteSpace($Branch)) {
-            Write-Host "Cloning specific branch/tag/commit: $Branch"
-            & git clone --branch $Branch $RepositoryUrl $playwrightPath
-        } else {
-            Write-Host "Cloning default branch"
-            & git clone $RepositoryUrl $playwrightPath
-        }
+        & git clone $RepositoryUrl $playwrightPath
         
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Successfully cloned Playwright repository to: $playwrightPath"
@@ -1526,7 +1519,7 @@ function Run-PlaywrightTests {
         
         # Add performance optimizations for CI/CD
         $testCommand += " --workers=2"  # Limit workers to prevent resource exhaustion
-        $testCommand += " --reporter=list,html,junit"  # Use list for live output, HTML for detailed report, JUnit for Azure DevOps integration
+        $testCommand += " --reporter=junit,html,line"  # Use faster line reporter
         
         # Add test pattern if specified
         if (![string]::IsNullOrWhiteSpace($TestPattern)) {
@@ -1537,61 +1530,13 @@ function Run-PlaywrightTests {
         $testCommand += " --output=test-results" 
         $testCommand += " --max-failures=10"  # Stop after 10 failures to save time
         
-        # Add extra verbose flags for better live output
-        Write-Host "Adding verbose output flags for better real-time feedback..." -ForegroundColor Cyan
-        Write-Host "✅ JUnit XML output enabled for Azure DevOps test result integration" -ForegroundColor Green
-        $testCommand += " --reporter=html,line"  # Ensure we get detailed HTML report
-        
         Write-Host "Executing command: $testCommand"
-        Write-Host "Starting Playwright test execution with live output streaming..."
+        Write-Host "Starting Playwright test execution with performance optimizations..."
         
-        # Execute the tests with live output streaming
-        try {
-            Write-Host "Executing: $testCommand" -ForegroundColor Cyan
-            Write-Host "Working Directory: $playwrightPath" -ForegroundColor Cyan
-            Write-Host "============================================" -ForegroundColor Green
-            Write-Host "LIVE TEST OUTPUT:" -ForegroundColor Green
-            Write-Host "============================================" -ForegroundColor Green
-            
-            # Change to playwright directory for execution
-            Push-Location $playwrightPath
-            
-            # Execute with live output streaming using PowerShell
-            $testExitCode = 0
-            try {
-                # Method 1: Use PowerShell's native execution with proper output streaming
-                Write-Host "Using PowerShell native execution for live output streaming..." -ForegroundColor Gray
-                Invoke-Expression $testCommand
-                $testExitCode = $LASTEXITCODE
-            } catch {
-                Write-Host "PowerShell execution failed, trying Start-Process method..." -ForegroundColor Yellow
-                try {
-                    # Method 2: Start-Process as fallback for better control
-                    Write-Host "Using Start-Process method as fallback..." -ForegroundColor Gray
-                    $commandParts = $testCommand -split ' ', 2
-                    $npxPath = "npx"
-                    $arguments = if ($commandParts.Length -gt 1) { $commandParts[1] } else { "" }
-                    
-                    $processInfo = Start-Process -FilePath $npxPath -ArgumentList $arguments -WorkingDirectory $playwrightPath -Wait -PassThru -NoNewWindow
-                    $testExitCode = $processInfo.ExitCode
-                } catch {
-                    Write-Host "Exception during test execution: $($_.Exception.Message)" -ForegroundColor Red
-                    $testExitCode = 1
-                }
-            }
-            
-            # Return to previous location
-            Pop-Location
-            
-            $summaryColor = if ($testExitCode -eq 0) { 'Green' } else { 'Red' }
-            Write-Host "============================================" -ForegroundColor $summaryColor
-            Write-Host "Test execution completed with exit code: $testExitCode" -ForegroundColor $summaryColor
-            Write-Host "============================================" -ForegroundColor $summaryColor
-        } catch {
-            Write-Error "Failed to execute Playwright tests: $($_.Exception.Message)"
-            Write-Host "Error details: $($_.Exception)" -ForegroundColor Red
-            $testExitCode = 1
-        }
+        # Execute the tests
+        Invoke-Expression $testCommand
+        
+        $testExitCode = $LASTEXITCODE
         
         if ($testExitCode -eq 0) {
             Write-Host "All Playwright tests passed successfully!" -ForegroundColor Green
@@ -1711,7 +1656,6 @@ function Run-PlaywrightTests {
 }
 
 # Copy test results and reports to output location
-# Copy test results and reports to output location
 function Copy-TestResultsToOutput {
     param(
         [string]$PlaywrightFolder = "playwright",
@@ -1762,11 +1706,30 @@ function Copy-TestResultsToOutput {
                     Remove-Item -Path $destTestResults -Recurse -Force
                 }
                 
+                # Ensure parent directory exists and create the full path
+                $destParent = Split-Path $destTestResults -Parent
+                if (!(Test-Path $destParent)) {
+                    Write-Host "Creating parent directory: $destParent"
+                    New-Item -Path $destParent -ItemType Directory -Force | Out-Null
+                }
+                
                 # Copy the entire folder structure
+                Write-Host "Copying test-results folder structure..."
                 Copy-Item -Path $sourceTestResults -Destination $OutputLocation -Recurse -Force
                 Write-Host "Successfully copied test-results folder"
             } catch {
                 Write-Warning "Failed to copy test-results folder: $($_.Exception.Message)"
+                Write-Host "Attempting alternative copy method..."
+                try {
+                    # Alternative method: Create destination first, then copy contents
+                    if (!(Test-Path $destTestResults)) {
+                        New-Item -Path $destTestResults -ItemType Directory -Force | Out-Null
+                    }
+                    Copy-Item -Path "$sourceTestResults\*" -Destination $destTestResults -Recurse -Force
+                    Write-Host "Successfully copied test-results using alternative method"
+                } catch {
+                    Write-Error "Failed to copy test-results with both methods: $($_.Exception.Message)"
+                }
             }
         } else {
             Write-Warning "No test-results folder found at: $sourceTestResults"
@@ -1784,45 +1747,39 @@ function Copy-TestResultsToOutput {
                     Remove-Item -Path $destReports -Recurse -Force
                 }
                 
+                # Ensure parent directory exists and create the full path
+                $destParent = Split-Path $destReports -Parent
+                if (!(Test-Path $destParent)) {
+                    Write-Host "Creating parent directory: $destParent"
+                    New-Item -Path $destParent -ItemType Directory -Force | Out-Null
+                }
+                
                 # Copy the entire folder structure
+                Write-Host "Copying playwright-report folder structure..."
                 Copy-Item -Path $sourceReports -Destination $OutputLocation -Recurse -Force
                 Write-Host "Successfully copied playwright-report folder"
             } catch {
                 Write-Warning "Failed to copy playwright-report folder: $($_.Exception.Message)"
+                Write-Host "Attempting alternative copy method..."
+                try {
+                    # Alternative method: Create destination first, then copy contents
+                    if (!(Test-Path $destReports)) {
+                        New-Item -Path $destReports -ItemType Directory -Force | Out-Null
+                    }
+                    Copy-Item -Path "$sourceReports\*" -Destination $destReports -Recurse -Force
+                    Write-Host "Successfully copied playwright-report using alternative method"
+                } catch {
+                    Write-Error "Failed to copy playwright-report with both methods: $($_.Exception.Message)"
+                }
             }
         } else {
             Write-Warning "No playwright-report folder found at: $sourceReports"
         }
         
-        # Copy JUnit XML files for Azure DevOps integration
-        $junitFiles = Get-ChildItem -Path $playwrightPath -Filter "results.xml" -ErrorAction SilentlyContinue
-        if (-not $junitFiles) {
-            $junitFiles = Get-ChildItem -Path $playwrightPath -Filter "junit.xml" -ErrorAction SilentlyContinue
-        }
-        if (-not $junitFiles) {
-            $junitFiles = Get-ChildItem -Path $playwrightPath -Filter "*.xml" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "(test|junit|results)" }
-        }
-        
-        if ($junitFiles) {
-            Write-Host "Found JUnit XML files for Azure DevOps integration:" -ForegroundColor Green
-            foreach ($junitFile in $junitFiles) {
-                Write-Host "  - $($junitFile.Name)" -ForegroundColor Green
-                try {
-                    $destJUnitFile = Join-Path $OutputLocation $junitFile.Name
-                    Copy-Item -Path $junitFile.FullName -Destination $destJUnitFile -Force
-                    Write-Host "    Copied to: $destJUnitFile" -ForegroundColor Green
-                } catch {
-                    Write-Warning "Failed to copy JUnit file $($junitFile.Name): $($_.Exception.Message)"
-                }
-            }
-            Write-Host "JUnit XML files available for Azure DevOps test result publishing" -ForegroundColor Green
-        } else {
-            Write-Host "No JUnit XML files found - results available in HTML format only" -ForegroundColor Yellow
-        }
-        
         # Summary
         Write-Host "Test results and reports copy operation completed"
         Write-Host "Output location: $OutputLocation"
+        
         
     } catch {
         Write-Error "Failed to copy test results and reports: $($_.Exception.Message)"
@@ -1843,7 +1800,6 @@ $appUrl = Get-VstsInput -Name 'appUrl'
 $appName = Get-VstsInput -Name 'appName'
 $o365Username = Get-VstsInput -Name 'o365Username'
 $o365Password = Get-VstsInput -Name 'o365Password'
-$playwrightVersion = Get-VstsInput -Name 'playwrightVersion'
 
 # Get new Power Platform advanced inputs
 $tenantId = Get-VstsInput -Name 'tenantId'
@@ -2041,13 +1997,7 @@ Write-Host "==========================================================="
 # Clone Playwright repository
 Write-Host "==========================================================="
 Write-Host "Cloning Playwright repository..."
-
-# Use hardcoded default repository URL
-$repositoryUrl = "https://github.com/itweedie/playwrightOnPowerPlatform.git"
-
-# Call function with version parameter
-Clone-PlaywrightRepository -RepositoryUrl $repositoryUrl -Branch $playwrightVersion
-
+Clone-PlaywrightRepository
 Write-Host "==========================================================="
 
 # Install Playwright from the cloned repository
