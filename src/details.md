@@ -187,19 +187,78 @@ test('Form Submission Workflow', async ({ page }) => {
 ### Common Issues
 - **Authentication Failures**: Verify credentials and ensure test user has appropriate permissions
 - **Element Not Found**: Check for Power Platform loading delays and add appropriate waits
-- **Timeout Errors**: Increase timeout values for slow-loading Power Platform environments
+- **Timeout Errors**: For slow-loading environments, consider increasing the default timeout in your Playwright configuration or tests.
 
-### Getting Help
-- Review the HTML report for detailed execution flow
-- Use trace files for step-by-step debugging
-- Check screenshots for visual verification of failures
-- Visit [mightora.io](https://mightora.io) for additional support
+## Contributing
 
-### Best Practices
-- Use secret variables for sensitive credentials
-- Enable trace mode only when debugging to optimize performance
-- Organize tests logically with descriptive names
-- Implement proper cleanup procedures for test data
-- Use page object patterns for maintainable test code
+This project is open source and contributions are welcome! If you'd like to report a bug, request a feature, or submit a code change, please visit our [GitHub repository](https://github.com/mightora/DevOpsExtension-Playwright-for-PowerPlatform) to open an issue or pull request.
 
-Transform your Power Platform testing with automated, reliable, and comprehensive end-to-end testing that integrates seamlessly with your Azure DevOps pipelines.
+## Release Notes
+
+### Version 1.1.0 - September 24, 2025 🎉
+
+**Major Improvements & Bug Fixes**
+
+#### 🔧 **Repository & Version Management**
+- **NEW**: Added `playwrightVersion` input parameter to specify versions, branches, tags, or commits
+- **ENHANCED**: Full control over which version of Playwright framework gets executed
+- **CONTROLLED**: Repository URL is fixed to ensure consistency and reliability across all users
+- **USE CASE**: Teams can test against specific versions and pin to stable releases
+
+#### 🛠️ **Command Execution Reliability**
+- **FIXED**: Resolved "Unknown command: 'pm'" error that occurred with npm/npx commands in certain CI/CD environments
+- **IMPROVED**: Replaced unreliable `&` call operator with robust `Start-Process` approach for npm/npx execution
+- **ENHANCED**: Better error handling with detailed logging of exact commands being executed
+- **RESULT**: More reliable installation and execution across different Azure DevOps agents and environments
+
+#### 🚀 **Performance & Stability**
+- **OPTIMIZED**: Faster npm dependency installation with improved error recovery
+- **ENHANCED**: Better exit code handling and process management
+- **IMPROVED**: More descriptive error messages for troubleshooting
+- **ADDED**: Comprehensive logging for debugging installation issues
+
+#### 📋 **Task Configuration**
+- **UPDATED**: Both Basic and Advanced task versions now support repository management
+- **CONSISTENT**: Unified input parameter handling across both task variants
+- **BACKWARD COMPATIBLE**: Existing pipelines continue to work without modification
+
+#### 🔍 **Developer Experience**
+- **IMPROVED**: Clear documentation of which branch/commit is being cloned
+- **ENHANCED**: Better error messages with troubleshooting guidance
+- **ADDED**: Validation and compatibility checks for repository cloning
+
+**Migration Notes:**
+- Existing pipelines will continue to work unchanged (default repository and branch behavior)
+- To use specific branches: Add `playwrightVersion` parameter with your desired branch/tag/commit
+- Repository URL is now fixed for consistency - custom repositories are no longer supported
+
+**Breaking Changes:**
+- None - this release is fully backward compatible
+
+---
+
+### Previous Versions
+
+#### Version 1.0.14 and Earlier
+- Core Playwright testing functionality for Power Platform applications
+- Office 365 authentication support
+- Multi-browser testing capabilities
+- Comprehensive reporting and debugging features
+
+## Support & Documentation
+
+- **Extension Documentation**: Detailed guides available in the Azure DevOps Marketplace
+- **Community Support**: GitHub issues and discussions
+- **Professional Support**: Available through [mightora.io](https://mightora.io)
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for more details.
+
+## Contact
+
+For more information or support, please visit [https://mightora.io](https://mightora.io) or open an issue in this repository.
+
+---
+
+**Created by:** [Mightora.io](https://mightora.io) | **Powered by:** [Playwright](https://playwright.dev)

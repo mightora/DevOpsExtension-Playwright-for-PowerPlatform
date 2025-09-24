@@ -11,7 +11,7 @@
     "version": {
         "Major": 1,
         "Minor": 0,
-        "Patch": 33
+        "Patch": 46
     },
     "groups": [
         {
@@ -33,6 +33,15 @@
             "defaultValue": "$(System.DefaultWorkingDirectory)/PlaywrightTests",
             "required": true,
             "helpMarkDown": "Path to the folder containing Playwright tests to copy",
+            "groupName": "inputGroup"
+        },
+        {
+            "name": "playwrightVersion",
+            "type": "string",
+            "label": "Version",
+            "defaultValue": "",
+            "required": false,
+            "helpMarkDown": "Specific version of the Playwright for Power Platform Tool to run. Leave empty to use the latest default version.",
             "groupName": "inputGroup"
         },
         {

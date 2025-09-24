@@ -128,7 +128,8 @@ function Install-NodeJS {
 function Clone-PlaywrightRepository {
     param(
         [string]$RepositoryUrl = "https://github.com/itweedie/playwrightOnPowerPlatform.git",
-        [string]$TargetFolder = "playwright"
+        [string]$TargetFolder = "playwright",
+        [string]$Branch = ""  # Optional branch/tag/commit to clone
     )
     
     Write-Host "Cloning Playwright repository..."
@@ -157,7 +158,13 @@ function Clone-PlaywrightRepository {
         Write-Host "Cloning repository from: $RepositoryUrl"
         Write-Host "Target folder: $playwrightPath"
         
-        & git clone $RepositoryUrl $playwrightPath
+        if (![string]::IsNullOrWhiteSpace($Branch)) {
+            Write-Host "Cloning specific branch/tag/commit: $Branch"
+            & git clone --branch $Branch $RepositoryUrl $playwrightPath
+        } else {
+            Write-Host "Cloning default branch"
+            & git clone $RepositoryUrl $playwrightPath
+        }
         
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Successfully cloned Playwright repository to: $playwrightPath"
@@ -205,13 +212,30 @@ function Install-PlaywrightFromRepository {
         
         # Install npm dependencies with cache optimization
         Write-Host "Installing npm dependencies..."
-        & npm ci --prefer-offline --no-audit --no-fund
         
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "npm ci failed, falling back to npm install..."
-            & npm install --prefer-offline --no-audit --no-fund
-            if ($LASTEXITCODE -ne 0) {
-                throw "npm install failed with exit code: $LASTEXITCODE"
+        # Use Start-Process for more reliable npm execution
+        try {
+            Write-Host "Executing: npm ci --prefer-offline --no-audit --no-fund"
+            $npmCiProcess = Start-Process -FilePath "npm" -ArgumentList "ci", "--prefer-offline", "--no-audit", "--no-fund" -Wait -PassThru -NoNewWindow
+            $npmCiExitCode = $npmCiProcess.ExitCode
+        } catch {
+            Write-Warning "Failed to execute npm ci: $($_.Exception.Message)"
+            $npmCiExitCode = 1
+        }
+        
+        if ($npmCiExitCode -ne 0) {
+            Write-Warning "npm ci failed (exit code: $npmCiExitCode), falling back to npm install..."
+            try {
+                Write-Host "Executing: npm install --prefer-offline --no-audit --no-fund"
+                $npmInstallProcess = Start-Process -FilePath "npm" -ArgumentList "install", "--prefer-offline", "--no-audit", "--no-fund" -Wait -PassThru -NoNewWindow
+                $npmInstallExitCode = $npmInstallProcess.ExitCode
+                
+                if ($npmInstallExitCode -ne 0) {
+                    throw "npm install failed with exit code: $npmInstallExitCode"
+                }
+            } catch {
+                Write-Error "Failed to execute npm install: $($_.Exception.Message)"
+                throw "npm install failed with exit code: $npmInstallExitCode"
             }
         }
         
@@ -224,20 +248,36 @@ function Install-PlaywrightFromRepository {
         $targetBrowser = if ($env:PLAYWRIGHT_BROWSER) { $env:PLAYWRIGHT_BROWSER } else { "chromium" }
         
         Write-Host "Installing only $targetBrowser browser for faster execution..."
-        & npx playwright install $targetBrowser
         
-        if ($LASTEXITCODE -ne 0) {
-            throw "Playwright browser installation failed with exit code: $LASTEXITCODE"
+        try {
+            Write-Host "Executing: npx playwright install $targetBrowser"
+            $playwrightInstallProcess = Start-Process -FilePath "npx" -ArgumentList "playwright", "install", $targetBrowser -Wait -PassThru -NoNewWindow
+            $playwrightInstallExitCode = $playwrightInstallProcess.ExitCode
+        } catch {
+            Write-Error "Failed to execute npx playwright install: $($_.Exception.Message)"
+            throw "Playwright browser installation failed"
+        }
+        
+        if ($playwrightInstallExitCode -ne 0) {
+            throw "Playwright browser installation failed with exit code: $playwrightInstallExitCode"
         }
         
         Write-Host "Playwright browsers installed successfully"
         
         # Install only system dependencies for the specific browser (much faster)
         Write-Host "Installing Playwright system dependencies for $targetBrowser..."
-        & npx playwright install-deps $targetBrowser
         
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Playwright system dependencies installation completed with warnings (exit code: $LASTEXITCODE)"
+        try {
+            Write-Host "Executing: npx playwright install-deps $targetBrowser"
+            $playwrightDepsProcess = Start-Process -FilePath "npx" -ArgumentList "playwright", "install-deps", $targetBrowser -Wait -PassThru -NoNewWindow
+            $playwrightDepsExitCode = $playwrightDepsProcess.ExitCode
+        } catch {
+            Write-Warning "Failed to execute npx playwright install-deps: $($_.Exception.Message)"
+            $playwrightDepsExitCode = 1
+        }
+        
+        if ($playwrightDepsExitCode -ne 0) {
+            Write-Warning "Playwright system dependencies installation completed with warnings (exit code: $playwrightDepsExitCode)"
         } else {
             Write-Host "Playwright system dependencies installed successfully"
         }
@@ -416,7 +456,7 @@ function Run-PlaywrightTests {
         
         # Add performance optimizations for CI/CD
         $testCommand += " --workers=2"  # Limit workers to prevent resource exhaustion
-        #$testCommand += " --reporter=line"  # Use faster line reporter
+        #$testCommand += " --reporter=junit,html,line"  # Testing handled in playwright config
         
         # Add test pattern if specified
         if (![string]::IsNullOrWhiteSpace($TestPattern)) {
@@ -697,6 +737,8 @@ $appUrl = Get-VstsInput -Name 'appUrl'
 $appName = Get-VstsInput -Name 'appName'
 $o365Username = Get-VstsInput -Name 'o365Username'
 $o365Password = Get-VstsInput -Name 'o365Password'
+$playwrightRepository = Get-VstsInput -Name 'playwrightRepository'
+$playwrightBranch = Get-VstsInput -Name 'playwrightBranch'
 $branchName = Get-VstsInput -Name 'branchName'
 $tags = Get-VstsInput -Name 'tags'
 
@@ -755,7 +797,13 @@ Write-Host "==========================================================="
 # Clone Playwright repository
 Write-Host "==========================================================="
 Write-Host "Cloning Playwright repository..."
-Clone-PlaywrightRepository
+
+# Use custom repository URL if provided, otherwise use default
+$repositoryUrl = if (![string]::IsNullOrWhiteSpace($playwrightRepository)) { $playwrightRepository } else { "https://github.com/itweedie/playwrightOnPowerPlatform.git" }
+
+# Call function with branch parameter
+Clone-PlaywrightRepository -RepositoryUrl $repositoryUrl -Branch $playwrightBranch
+
 Write-Host "==========================================================="
 
 # Install Playwright from the cloned repository
@@ -791,4 +839,3 @@ Write-Host "Contributors:"
 #Write-Host " - Developer A (Contributions: Improved Git configuration handling)"
 #Write-Host " - Developer B (Contributions: Added support for custom commit messages)"
 Write-Host "==========================================================="
-

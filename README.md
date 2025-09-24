@@ -17,6 +17,12 @@ Built specifically for Power Platform applications, this extension handles the u
 - Pre-configured testing framework optimized for Power Platform applications
 - No manual environment preparation required
 
+### 🔧 **Version Management** *(New in v1.0.15+)*
+- **Version Control**: Specify exact versions, branches, tags, or commits for testing
+- **Version Pinning**: Lock tests to specific framework versions for consistency
+- **Development Workflow**: Test against feature branches before production deployment
+- **Controlled Repository**: Uses curated Playwright framework for reliability
+
 ### 🎯 **Power Platform Optimized**
 - Native Office 365 authentication handling
 - Pre-built selectors and waits for Power Platform controls
@@ -74,11 +80,29 @@ Add the task to your Azure DevOps pipeline:
     o365Password: '$(TestUser.Password)'
 ```
 
+### Advanced Usage with Version Control *(New in v1.0.15)*
+
+```yaml
+- task: mightoria-playwrightForPowerPlatform@1
+  displayName: 'Run Tests with Specific Version'
+  inputs:
+    testLocation: '$(System.DefaultWorkingDirectory)/tests'
+    playwrightVersion: 'v2.1.0'
+    browser: 'chromium'
+    trace: 'on-first-retry'
+    outputLocation: '$(Agent.TempDirectory)/test-results'
+    appUrl: 'https://apps.powerapps.com/play/$(AppId)'
+    appName: 'MyPowerApp'
+    o365Username: '$(TestUser.Email)'
+    o365Password: '$(TestUser.Password)'
+```
+
 ### Configuration Parameters
 
 | Parameter | Description | Required | Default |
 |-----------|-------------|----------|---------|
 | `testLocation` | Path to Playwright test files | Yes | `$(System.DefaultWorkingDirectory)/PlaywrightTests` |
+| `playwrightVersion` | Specific version, branch, tag, or commit to use | No | *(latest default)* |
 | `browser` | Browser to run tests (chromium, firefox, webkit, all) | Yes | `all` |
 | `trace` | Trace mode (off, on, retain-on-failure, on-first-retry) | Yes | `off` |
 | `outputLocation` | Directory for test results and reports | Yes | `$(System.DefaultWorkingDirectory)` |
@@ -86,6 +110,20 @@ Add the task to your Azure DevOps pipeline:
 | `appName` | Power Platform application name | No | - |
 | `o365Username` | Office 365 username for authentication | No | - |
 | `o365Password` | Office 365 password for authentication | No | - |
+
+#### Version Management Parameter *(v1.0.15+)*
+
+The `playwrightVersion` parameter provides flexibility for teams who need to:
+- Test against specific versions or feature branches
+- Pin to stable releases for consistent testing
+- Validate changes before they reach the main branch
+
+**Examples:**
+- Use feature branch: `playwrightVersion: "feature/new-selectors"`
+- Pin to specific version: `playwrightVersion: "v2.1.0"`
+- Test specific commit: `playwrightVersion: "abc123def456"`
+
+*Note: The repository URL is fixed to ensure framework consistency and reliability.*
 
 ## Example Test Scenarios
 
@@ -125,12 +163,66 @@ test('Form Submission', async ({ page }) => {
 - **Authentication failures**: Verify credentials and user permissions
 - **Element not found errors**: Check for Power Platform loading delays
 - **Timeout issues**: Increase timeout values for slow environments
+- **"Unknown command: pm" errors**: *(Fixed in v1.0.15)* - Update to the latest version for improved npm command reliability
 
 ### Debugging Tools
 - Review HTML reports for detailed execution flow
 - Use trace files for step-by-step analysis
 - Check screenshots for visual verification
 - Monitor network logs for connectivity issues
+- **New**: Enhanced error logging provides detailed command execution information
+
+## Release Notes
+
+### Version 1.1.0 - September 19, 2025 🎉
+
+**Major Improvements & Bug Fixes**
+
+#### 🔧 **Repository & Version Management**
+- **NEW**: Added `playwrightVersion` input parameter to specify versions, branches, tags, or commits
+- **ENHANCED**: Full control over which version of Playwright framework gets executed
+- **CONTROLLED**: Repository URL is fixed to ensure consistency and reliability across all users
+- **USE CASE**: Teams can test against specific versions and pin to stable releases
+
+#### 🛠️ **Command Execution Reliability**
+- **FIXED**: Resolved "Unknown command: 'pm'" error that occurred with npm/npx commands in certain CI/CD environments
+- **IMPROVED**: Replaced unreliable `&` call operator with robust `Start-Process` approach for npm/npx execution
+- **ENHANCED**: Better error handling with detailed logging of exact commands being executed
+- **RESULT**: More reliable installation and execution across different Azure DevOps agents and environments
+
+#### 🚀 **Performance & Stability**
+- **OPTIMIZED**: Faster npm dependency installation with improved error recovery
+- **ENHANCED**: Better exit code handling and process management
+- **IMPROVED**: More descriptive error messages for troubleshooting
+- **ADDED**: Comprehensive logging for debugging installation issues
+
+#### 📋 **Task Configuration**
+- **UPDATED**: Both Basic and Advanced task versions now support repository management
+- **CONSISTENT**: Unified input parameter handling across both task variants
+- **BACKWARD COMPATIBLE**: Existing pipelines continue to work without modification
+
+#### 🔍 **Developer Experience**
+- **IMPROVED**: Clear documentation of which branch/commit is being cloned
+- **ENHANCED**: Better error messages with troubleshooting guidance
+- **ADDED**: Validation and compatibility checks for repository cloning
+
+**Migration Notes:**
+- Existing pipelines will continue to work unchanged (default repository and branch behavior)
+- To use specific branches: Add `playwrightVersion` parameter with your desired branch/tag/commit
+- Repository URL is now fixed for consistency - custom repositories are no longer supported
+
+**Breaking Changes:**
+- None - this release is fully backward compatible
+
+---
+
+### Previous Versions
+
+#### Version 1.0.14 and Earlier
+- Core Playwright testing functionality for Power Platform applications
+- Office 365 authentication support
+- Multi-browser testing capabilities
+- Comprehensive reporting and debugging features
 
 ## Support & Documentation
 
