@@ -1,8 +1,8 @@
 {
     "manifestVersion": 1,
     "id": "dev-mightora-playwright-for-power-platform",
-    "name": "DEV 1.1.66 - Playwright for Power Platform",
-    "version": "1.1.66",
+    "name": "DEV 1.1.67 - Playwright for Power Platform",
+    "version": "1.1.67",
     "publisher": "mightoraio",
     "targets": [
         {
