@@ -11,7 +11,7 @@
     "version": {
         "Major": 1,
         "Minor": 0,
-        "Patch": 45
+        "Patch": 46
     },
     "groups": [
         {
@@ -38,10 +38,10 @@
         {
             "name": "playwrightVersion",
             "type": "string",
-            "label": "Playwright Framework Version",
+            "label": "Version",
             "defaultValue": "",
             "required": false,
-            "helpMarkDown": "Specific version, branch, tag, or commit to use from the Playwright repository. Leave empty to use the latest default version.",
+            "helpMarkDown": "Specific version of the Playwright for Power Platform Tool to run. Leave empty to use the latest default version.",
             "groupName": "inputGroup"
         },
         {
