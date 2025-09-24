@@ -456,7 +456,7 @@ function Run-PlaywrightTests {
         
         # Add performance optimizations for CI/CD
         $testCommand += " --workers=2"  # Limit workers to prevent resource exhaustion
-        $testCommand += " --reporter=junit,html,line"  # Use faster line reporter
+        #$testCommand += " --reporter=junit,html,line"  # Use reporter
         
         # Add test pattern if specified
         if (![string]::IsNullOrWhiteSpace($TestPattern)) {
